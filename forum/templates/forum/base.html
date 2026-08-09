@@ -1,0 +1,28 @@
+{% load static %}
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}简易论坛{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'forum/style.css' %}">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="{% url 'forum:board_list' %}">简易论坛</a>
+      <nav>
+        {% if user.is_authenticated %}
+          <span>你好，{{ user.username }}</span>
+          <form class="inline-form" method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="link-button">退出</button></form>
+        {% else %}
+          <a href="{% url 'login' %}">登录</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

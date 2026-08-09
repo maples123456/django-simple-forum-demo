@@ -1,0 +1,12 @@
+{% extends 'forum/base.html' %}
+{% block title %}板块 · 简易论坛{% endblock %}
+{% block content %}
+  <section class="hero"><p class="eyebrow">Django Demo</p><h1>讨论，从一个板块开始</h1><p>选择感兴趣的板块，浏览帖子或加入讨论。</p></section>
+  <section class="card-list">
+    {% for board in boards %}
+      <a class="board-card" href="{% url 'forum:post_list' board.id %}"><h2>{{ board.name }}</h2><p>{{ board.description|default:'这里还没有板块简介。' }}</p><span>{{ board.post_count }} 篇帖子 →</span></a>
+    {% empty %}
+      <div class="empty"><h2>暂无板块</h2><p>请通过管理员后台创建第一个板块。</p></div>
+    {% endfor %}
+  </section>
+{% endblock %}

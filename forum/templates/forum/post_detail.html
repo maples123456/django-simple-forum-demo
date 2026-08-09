@@ -1,0 +1,8 @@
+{% extends 'forum/base.html' %}
+{% block title %}{{ post.title }} · 简易论坛{% endblock %}
+{% block content %}
+  <a class="back" href="{% url 'forum:post_list' post.board.id %}">← 返回 {{ post.board.name }}</a>
+  <article class="post-detail"><h1>{{ post.title }}</h1><p class="meta">{{ post.author.username }} · {{ post.created_at|date:'Y-m-d H:i' }}</p><div class="content">{{ post.content|linebreaks }}</div><div class="actions"><span>♡ {{ post.likes.count }} 人点赞</span>{% if user.is_authenticated %}<form method="post" action="{% url 'forum:toggle_like' post.id %}">{% csrf_token %}<button class="button secondary" type="submit">{% if user in post.likes.all %}取消点赞{% else %}点赞{% endif %}</button></form>{% endif %}</div></article>
+  <section class="replies"><h2>{{ post.replies.count }} 条回复</h2>{% for reply in post.replies.all %}<article class="reply"><p class="meta">{{ reply.author.username }} · {{ reply.created_at|date:'Y-m-d H:i' }}</p><div>{{ reply.content|linebreaks }}</div></article>{% empty %}<p class="muted">暂无回复，来聊聊吧。</p>{% endfor %}</section>
+  <section class="form-card"><h2>写回复</h2>{% if user.is_authenticated %}<form method="post">{% csrf_token %}{{ form.as_p }}<button class="button" type="submit">回复</button></form>{% else %}<p><a href="{% url 'login' %}?next={{ request.path }}">登录</a>后即可参与讨论。</p>{% endif %}</section>
+{% endblock %}

@@ -1,0 +1,6 @@
+{% extends 'forum/base.html' %}
+{% block title %}发布帖子 · 简易论坛{% endblock %}
+{% block content %}
+  <a class="back" href="{% url 'forum:post_list' board.id %}">← 返回 {{ board.name }}</a>
+  <section class="form-card"><h1>发布新帖子</h1><form method="post">{% csrf_token %}{{ form.as_p }}<button class="button" type="submit">发布</button></form></section>
+{% endblock %}
