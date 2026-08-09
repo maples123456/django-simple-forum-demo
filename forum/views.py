@@ -6,7 +6,12 @@ from django.http import HttpResponseBadRequest, JsonResponse
 from django.middleware.csrf import get_token
 from django.views.decorators.http import require_GET, require_POST
 from django.shortcuts import get_object_or_404, render
+from analytics.events import record_event
 from .models import Board, Post, Reply
+
+
+def _analytics_session(request):
+    return request.headers.get('X-Analytics-Session', '')[:64] or request.session.session_key or ''
 
 
 def app(request):
@@ -60,6 +65,7 @@ def create_post_api(request, board_id):
         return HttpResponseBadRequest('标题和内容不能为空。')
     board = get_object_or_404(Board, pk=board_id)
     post = Post.objects.create(board=board, author=request.user, title=data['title'].strip(), content=data['content'].strip())
+    record_event('post_create', user=request.user, board=board, post=post, session_id=_analytics_session(request))
     return JsonResponse({'post': _post_data(post, request.user)}, status=201)
 
 
@@ -77,6 +83,7 @@ def reply_api(request, post_id):
         return HttpResponseBadRequest('回复内容不能为空。')
     post = get_object_or_404(Post, pk=post_id)
     reply = Reply.objects.create(post=post, author=request.user, content=data['content'].strip())
+    record_event('reply_create', user=request.user, board=post.board, post=post, session_id=_analytics_session(request))
     return JsonResponse({'reply': {'id': reply.id, 'content': reply.content, 'author': reply.author.username, 'createdAt': reply.created_at.isoformat()}}, status=201)
 
 
@@ -86,6 +93,9 @@ def toggle_like_api(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
     if post.likes.filter(pk=request.user.pk).exists():
         post.likes.remove(request.user)
+        event_name = 'post_unlike'
     else:
         post.likes.add(request.user)
+        event_name = 'post_like'
+    record_event(event_name, user=request.user, board=post.board, post=post, session_id=_analytics_session(request))
     return JsonResponse({'likeCount': post.likes.count(), 'liked': post.likes.filter(pk=request.user.pk).exists()})
