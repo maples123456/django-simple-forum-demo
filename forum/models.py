@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.db import models
-from django.urls import reverse
 
 
 class Board(models.Model):
@@ -33,10 +32,6 @@ class Post(models.Model):
 
     def __str__(self):
         return self.title
-
-    def get_absolute_url(self):
-        return reverse('forum:post_detail', args=[self.pk])
-
 
 class Reply(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='replies', verbose_name='帖子')

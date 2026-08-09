@@ -10,7 +10,7 @@
 <body>
   <header class="site-header">
     <div class="container nav">
-      <a class="brand" href="{% url 'forum:board_list' %}">简易论坛</a>
+      <a class="brand" href="{% url 'forum:app' %}">简易论坛</a>
       <nav>
         {% if user.is_authenticated %}
           <span>你好，{{ user.username }}</span>
