@@ -73,7 +73,13 @@ class ProductMetricsDaily(models.Model):
     liking_users = models.PositiveIntegerField(default=0)
     unlikes_created = models.PositiveIntegerField(default=0)
     anonymous_visitors = models.PositiveIntegerField(default=0)
+    anonymous_uv = models.PositiveIntegerField(default=0)
+    anonymous_registrations = models.PositiveIntegerField(default=0)
     anonymous_page_views = models.PositiveIntegerField(default=0)
+    activated_new_users = models.PositiveIntegerField(default=0)
+    read_only_users = models.PositiveIntegerField(default=0)
+    interaction_users = models.PositiveIntegerField(default=0)
+    creator_users = models.PositiveIntegerField(default=0)
     d1_retention_rate = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     d7_retention_rate = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     d30_retention_rate = models.DecimalField(max_digits=6, decimal_places=2, default=0)
@@ -81,6 +87,24 @@ class ProductMetricsDaily(models.Model):
 
     class Meta:
         ordering = ['-metric_date']
+
+
+class BoardMetricsDaily(models.Model):
+    metric_date = models.DateField(db_index=True)
+    board = models.ForeignKey('forum.Board', on_delete=models.CASCADE, related_name='+')
+    active_users = models.PositiveIntegerField(default=0)
+    post_views = models.PositiveIntegerField(default=0)
+    post_view_users = models.PositiveIntegerField(default=0)
+    posts_created = models.PositiveIntegerField(default=0)
+    posting_users = models.PositiveIntegerField(default=0)
+    replies_created = models.PositiveIntegerField(default=0)
+    replying_users = models.PositiveIntegerField(default=0)
+    likes_created = models.PositiveIntegerField(default=0)
+    liking_users = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['-metric_date', 'board_id']
+        constraints = [models.UniqueConstraint(fields=['metric_date', 'board'], name='unique_board_metrics_day')]
 
 
 class RetentionCohort(models.Model):
@@ -93,5 +117,24 @@ class RetentionCohort(models.Model):
     class Meta:
         ordering = ['-cohort_date', 'retention_day']
         constraints = [models.UniqueConstraint(fields=['cohort_date', 'retention_day'], name='unique_retention_cohort_day')]
+
+
+class BehaviorRetentionCohort(models.Model):
+    class Segment(models.TextChoices):
+        INACTIVE = 'inactive', '首日未激活'
+        READ_ONLY = 'read_only', '首日只读'
+        INTERACTION = 'interaction', '首日互动'
+        CREATOR = 'creator', '首日创作者'
+
+    cohort_date = models.DateField(db_index=True)
+    first_day_segment = models.CharField(max_length=16, choices=Segment.choices)
+    retention_day = models.PositiveSmallIntegerField()
+    cohort_size = models.PositiveIntegerField(default=0)
+    retained_users = models.PositiveIntegerField(default=0)
+    retention_rate = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ['-cohort_date', 'first_day_segment', 'retention_day']
+        constraints = [models.UniqueConstraint(fields=['cohort_date', 'first_day_segment', 'retention_day'], name='unique_behavior_retention_cohort')]
 
 # Create your models here.

@@ -41,6 +41,7 @@
 .heatmap-head b { color:#667085; font-size:.72rem; }
 .cohort-size { background:#f7f8fa; color:#344054; }
 .definition-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:18px; }
+.definition-metrics.three-metrics { grid-template-columns:repeat(3,1fr); }
 .definition-metrics>div { padding:14px 15px; background:#f8f9fb; border:1px solid #eaecf0; border-radius:10px; }
 .definition-metrics span,.definition-metrics small { display:block; color:#667085; }
 .definition-metrics strong { display:block; margin:5px 0; font-size:1.45rem; }
@@ -55,4 +56,4 @@
 .contract-grid dd { margin:0; color:#1d2939; }
 .empty-data { color:#667085; padding:50px 0; text-align:center; }
 @media(max-width:900px){.metric-grid{grid-template-columns:repeat(3,1fr)}.chart-grid{grid-template-columns:1fr}.chart-wide{grid-column:auto}.contract-grid{grid-template-columns:1fr}}
-@media(max-width:620px){.analytics-shell>header{flex-direction:column}.metric-grid{grid-template-columns:repeat(2,1fr)}.analytics-card{padding:17px}.funnel-step{grid-template-columns:115px 1fr}.definition-metrics{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.analytics-shell>header{flex-direction:column}.metric-grid{grid-template-columns:repeat(2,1fr)}.analytics-card{padding:17px}.funnel-step{grid-template-columns:115px 1fr}.definition-metrics,.definition-metrics.three-metrics{grid-template-columns:repeat(2,1fr)}}

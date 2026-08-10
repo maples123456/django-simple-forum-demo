@@ -6,10 +6,11 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from .models import AnalyticsEvent, ProductMetricsDaily, RetentionCohort, UserActivityDaily
+from .models import AnalyticsEvent, BehaviorRetentionCohort, BoardMetricsDaily, ProductMetricsDaily, RetentionCohort, UserActivityDaily
 
 
 EFFECTIVE_EVENTS = ('page_view', 'board_view', 'post_view', 'post_create', 'reply_create', 'post_like')
+INTERACTION_EVENTS = ('reply_create', 'post_like')
 
 
 def _day_range(day):
@@ -50,11 +51,58 @@ def visitor_counts(start, end):
     anonymous_visitors = page_views.filter(user__isnull=True).exclude(
         anonymous_id='',
     ).exclude(anonymous_id__in=linked_anonymous_ids).values('anonymous_id').distinct().count()
+    anonymous_uv = page_views.filter(user__isnull=True).exclude(anonymous_id='').values('anonymous_id').distinct().count()
     return {
         'logged_visitors': logged_visitors,
         'anonymous_visitors': anonymous_visitors,
+        'anonymous_uv': anonymous_uv,
         'all_visitors': logged_visitors + anonymous_visitors,
     }
+
+
+def anonymous_registration_count(start, end):
+    """Count signups attributable to an anonymous page view in the same window."""
+    User = get_user_model()
+    signups = {
+        row['id']: row['date_joined']
+        for row in User.objects.filter(
+            date_joined__gte=start,
+            date_joined__lt=end,
+            is_staff=False,
+            is_superuser=False,
+        ).values('id', 'date_joined')
+    }
+    if not signups:
+        return 0
+    linked_ids = {}
+    for user_id, anonymous_id in AnalyticsEvent.objects.filter(
+        occurred_at__gte=start,
+        occurred_at__lt=end,
+        user_id__in=signups,
+    ).exclude(anonymous_id='').values_list('user_id', 'anonymous_id'):
+        linked_ids.setdefault(user_id, set()).add(anonymous_id)
+    anonymous_views = {}
+    for anonymous_id, occurred_at in AnalyticsEvent.objects.filter(
+        occurred_at__gte=start,
+        occurred_at__lt=end,
+        event_name='page_view',
+        user__isnull=True,
+    ).exclude(anonymous_id='').values_list('anonymous_id', 'occurred_at'):
+        anonymous_views.setdefault(anonymous_id, []).append(occurred_at)
+    return sum(
+        any(viewed_at <= joined_at for anonymous_id in linked_ids.get(user_id, ()) for viewed_at in anonymous_views.get(anonymous_id, ()))
+        for user_id, joined_at in signups.items()
+    )
+
+
+def _activity_segment(values):
+    if values.get('post_count', 0):
+        return 'creator'
+    if values.get('reply_count', 0) or values.get('like_count', 0):
+        return 'interaction'
+    if values.get('page_view_count', 0) or values.get('board_view_count', 0) or values.get('post_view_count', 0):
+        return 'read_only'
+    return 'inactive'
 
 
 @transaction.atomic
@@ -120,15 +168,45 @@ def generate_day(day):
         anonymous_page_views=Count('id', filter=Q(event_name='page_view')),
     )
     visitors = visitor_counts(start, end)
+    segments = {'read_only': 0, 'interaction': 0, 'creator': 0}
+    for values in activity.values():
+        segment = _activity_segment(values)
+        if segment != 'inactive':
+            segments[segment] += 1
+    active_new_users = sum(
+        1 for user_id in new_user_ids if _activity_segment(activity.get(user_id, {})) != 'inactive'
+    )
     ProductMetricsDaily.objects.update_or_create(metric_date=day, defaults={
         'dau': events.filter(event_name__in=EFFECTIVE_EVENTS).values('user_id').distinct().count(),
         'wau': _active_user_count(day - timedelta(days=6), day),
         'mau': _active_user_count(day - timedelta(days=29), day),
         'new_users': len(new_user_ids),
+        'activated_new_users': active_new_users,
+        'read_only_users': segments['read_only'],
+        'interaction_users': segments['interaction'],
+        'creator_users': segments['creator'],
         **totals,
         **anonymous_totals,
         'anonymous_visitors': visitors['anonymous_visitors'],
+        'anonymous_uv': visitors['anonymous_uv'],
+        'anonymous_registrations': anonymous_registration_count(start, end),
     })
+
+    board_rows = events.filter(board__isnull=False).values('board_id').annotate(
+        active_users=Count('user_id', distinct=True, filter=Q(event_name__in=EFFECTIVE_EVENTS)),
+        post_views=Count('id', filter=Q(event_name='post_view')),
+        post_view_users=Count('user_id', distinct=True, filter=Q(event_name='post_view')),
+        posts_created=Count('id', filter=Q(event_name='post_create')),
+        posting_users=Count('user_id', distinct=True, filter=Q(event_name='post_create')),
+        replies_created=Count('id', filter=Q(event_name='reply_create')),
+        replying_users=Count('user_id', distinct=True, filter=Q(event_name='reply_create')),
+        likes_created=Count('id', filter=Q(event_name='post_like')),
+        liking_users=Count('user_id', distinct=True, filter=Q(event_name='post_like')),
+    )
+    BoardMetricsDaily.objects.filter(metric_date=day).delete()
+    BoardMetricsDaily.objects.bulk_create([
+        BoardMetricsDaily(metric_date=day, **row) for row in board_rows
+    ])
 
 
 def generate_retention(cohort_date, retention_day):
@@ -157,6 +235,45 @@ def generate_retention(cohort_date, retention_day):
     ProductMetricsDaily.objects.filter(metric_date=cohort_date).update(**{field: rate})
 
 
+def generate_behavior_retention(cohort_date, retention_day):
+    User = get_user_model()
+    cohort_start, cohort_end = _day_range(cohort_date)
+    user_ids = set(User.objects.filter(
+        date_joined__gte=cohort_start,
+        date_joined__lt=cohort_end,
+        is_staff=False,
+        is_superuser=False,
+    ).values_list('id', flat=True))
+    activity_by_user = {
+        row['user_id']: _activity_segment(row)
+        for row in _eligible_events(cohort_start, cohort_end).filter(user_id__in=user_ids).values('user_id').annotate(
+            page_view_count=Count('id', filter=Q(event_name='page_view')),
+            board_view_count=Count('id', filter=Q(event_name='board_view')),
+            post_view_count=Count('id', filter=Q(event_name='post_view')),
+            post_count=Count('id', filter=Q(event_name='post_create')),
+            reply_count=Count('id', filter=Q(event_name='reply_create')),
+            like_count=Count('id', filter=Q(event_name='post_like')),
+        )
+    }
+    target_date = cohort_date + timedelta(days=retention_day)
+    target_start, target_end = _day_range(target_date)
+    retained_ids = set(_eligible_events(target_start, target_end).filter(
+        user_id__in=user_ids,
+        event_name__in=EFFECTIVE_EVENTS,
+    ).values_list('user_id', flat=True).distinct())
+    for segment, _ in BehaviorRetentionCohort.Segment.choices:
+        segment_users = {user_id for user_id in user_ids if activity_by_user.get(user_id, 'inactive') == segment}
+        retained_users = len(segment_users & retained_ids)
+        cohort_size = len(segment_users)
+        rate = Decimal(retained_users * 100 / cohort_size).quantize(Decimal('0.01')) if cohort_size else Decimal('0')
+        BehaviorRetentionCohort.objects.update_or_create(
+            cohort_date=cohort_date,
+            first_day_segment=segment,
+            retention_day=retention_day,
+            defaults={'cohort_size': cohort_size, 'retained_users': retained_users, 'retention_rate': rate},
+        )
+
+
 def generate_metrics(start_date, end_date):
     day = start_date
     while day <= end_date:
@@ -168,7 +285,9 @@ def generate_metrics(start_date, end_date):
         for retention_day in (1, 7, 30):
             if cohort_date + timedelta(days=retention_day) <= observation_end:
                 generate_retention(cohort_date, retention_day)
+                generate_behavior_retention(cohort_date, retention_day)
             else:
                 RetentionCohort.objects.filter(cohort_date=cohort_date, retention_day=retention_day).delete()
+                BehaviorRetentionCohort.objects.filter(cohort_date=cohort_date, retention_day=retention_day).delete()
                 ProductMetricsDaily.objects.filter(metric_date=cohort_date).update(**{f'd{retention_day}_retention_rate': 0})
         cohort_date += timedelta(days=1)

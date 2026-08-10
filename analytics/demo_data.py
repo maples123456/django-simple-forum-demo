@@ -143,7 +143,17 @@ def generate_demo_data(*, days=60, user_count=180, seed=20260810, end_date=None,
 
     events = []
     for profile in profiles:
-        events.append(_demo_event('sign_up', profile.user.date_joined, user=profile.user, segment=profile.segment))
+        browser_id = f'demo-browser-{profile.user.id}'
+        if rng.random() < 0.68:
+            events.append(_demo_event(
+                'page_view',
+                profile.user.date_joined - timedelta(minutes=rng.randint(5, 45)),
+                anonymous_id=browser_id,
+                session_id=f'{browser_id}-pre-signup',
+                source='react',
+                extra={'visitor_type': 'anonymous', 'journey': 'pre_signup'},
+            ))
+        events.append(_demo_event('sign_up', profile.user.date_joined, user=profile.user, anonymous_id=browser_id, segment=profile.segment))
 
     posts = []
     for index, board in enumerate(boards):
@@ -171,16 +181,17 @@ def generate_demo_data(*, days=60, user_count=180, seed=20260810, end_date=None,
                 last_session_id = session_id
                 hour = min(8 + rng.randint(0, 13) + session_number, 23)
                 base_time = _at(day, hour, rng.randint(0, 50))
+                browser_id = f'demo-browser-{profile.user.id}'
                 events.append(_demo_event('login', base_time, user=profile.user, session_id=session_id, segment=profile.segment))
-                events.append(_demo_event('page_view', base_time + timedelta(minutes=1), user=profile.user, session_id=session_id, segment=profile.segment, source='react', extra={'device': rng.choice(('desktop', 'mobile'))}))
+                events.append(_demo_event('page_view', base_time + timedelta(minutes=1), user=profile.user, anonymous_id=browser_id, session_id=session_id, segment=profile.segment, source='react', extra={'device': rng.choice(('desktop', 'mobile'))}))
                 if rng.random() < 0.90:
                     board = rng.choice(boards)
-                    events.append(_demo_event('board_view', base_time + timedelta(minutes=2), user=profile.user, session_id=session_id, board=board, segment=profile.segment, source='react'))
+                    events.append(_demo_event('board_view', base_time + timedelta(minutes=2), user=profile.user, anonymous_id=browser_id, session_id=session_id, board=board, segment=profile.segment, source='react'))
                 view_total = rng.randint(1, {'reader': 5, 'liker': 5, 'discusser': 4, 'creator': 4}[profile.segment])
                 for view_number in range(view_total):
                     post = rng.choice(posts)
                     viewed_posts.append(post)
-                    events.append(_demo_event('post_view', base_time + timedelta(minutes=3 + view_number), user=profile.user, session_id=session_id, board=post.board, post=post, segment=profile.segment, source='react'))
+                    events.append(_demo_event('post_view', base_time + timedelta(minutes=3 + view_number), user=profile.user, anonymous_id=browser_id, session_id=session_id, board=post.board, post=post, segment=profile.segment, source='react'))
 
             action_time = _at(day, min(21 + session_total, 23), rng.randint(0, 45))
             probabilities = {

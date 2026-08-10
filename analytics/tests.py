@@ -11,7 +11,7 @@ from forum.models import Board, Post
 
 from .events import record_event
 from .demo_data import DEMO_USERNAME_PREFIX, generate_demo_data
-from .models import AnalyticsEvent, ProductMetricsDaily, RetentionCohort, UserActivityDaily
+from .models import AnalyticsEvent, BehaviorRetentionCohort, BoardMetricsDaily, ProductMetricsDaily, RetentionCohort, UserActivityDaily
 from .services import _day_range as services_day_range
 from .services import generate_metrics
 
@@ -109,6 +109,9 @@ class AnalyticsTests(TestCase):
         self.assertEqual(payload['summary']['allVisitors'], 2)
         self.assertEqual(payload['summary']['loggedVisitors'], 1)
         self.assertEqual(payload['summary']['anonymousVisitors'], 1)
+        self.assertEqual(payload['summary']['anonymousUv'], 2)
+        self.assertEqual(payload['summary']['anonymousRegistrations'], 1)
+        self.assertEqual(payload['summary']['activationRate'], 50.0)
         self.assertEqual(payload['summary']['likeActions'], 2)
         self.assertEqual(payload['summary']['likingUsers'], 1)
         self.assertEqual(payload['summary']['netLikes'], 1)
@@ -142,6 +145,11 @@ class DemoDataTests(TestCase):
         self.assertGreater(totals['board_views'], 0)
         self.assertGreater(totals['post_view_users'], 0)
         self.assertGreater(totals['anonymous_visitors'], 0)
+        latest = ProductMetricsDaily.objects.get(metric_date=result['end_date'])
+        self.assertEqual(latest.read_only_users + latest.interaction_users + latest.creator_users, latest.dau)
+        self.assertGreater(ProductMetricsDaily.objects.aggregate(total=Sum('anonymous_registrations'))['total'], 0)
+        self.assertTrue(BoardMetricsDaily.objects.exists())
+        self.assertTrue(BehaviorRetentionCohort.objects.filter(first_day_segment='creator', retention_day=7).exists())
         self.assertTrue(RetentionCohort.objects.filter(retention_day=1).exists())
 
         with self.assertRaisesMessage(ValueError, '演示数据已经存在'):

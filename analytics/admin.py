@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import AnalyticsEvent, ProductMetricsDaily, RetentionCohort, UserActivityDaily
+from .models import AnalyticsEvent, BehaviorRetentionCohort, BoardMetricsDaily, ProductMetricsDaily, RetentionCohort, UserActivityDaily
 
 
 @admin.register(AnalyticsEvent)
@@ -13,6 +13,8 @@ class AnalyticsEventAdmin(admin.ModelAdmin):
 
 admin.site.register(UserActivityDaily)
 admin.site.register(ProductMetricsDaily)
+admin.site.register(BoardMetricsDaily)
 admin.site.register(RetentionCohort)
+admin.site.register(BehaviorRetentionCohort)
 
 # Register your models here.
