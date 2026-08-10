@@ -118,10 +118,13 @@ def generate_metrics(start_date, end_date):
     while day <= end_date:
         generate_day(day)
         day += timedelta(days=1)
-    today = timezone.localdate()
+    observation_end = min(end_date, timezone.localdate() - timedelta(days=1))
     cohort_date = start_date - timedelta(days=30)
     while cohort_date <= end_date:
         for retention_day in (1, 7, 30):
-            if cohort_date + timedelta(days=retention_day) <= today:
+            if cohort_date + timedelta(days=retention_day) <= observation_end:
                 generate_retention(cohort_date, retention_day)
+            else:
+                RetentionCohort.objects.filter(cohort_date=cohort_date, retention_day=retention_day).delete()
+                ProductMetricsDaily.objects.filter(metric_date=cohort_date).update(**{f'd{retention_day}_retention_rate': 0})
         cohort_date += timedelta(days=1)

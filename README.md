@@ -30,6 +30,36 @@ cd frontend && npm install && npm run build && cd ..
 
 指标后台要求登录 `is_staff=True` 的管理员账号。点击“重新生成指标”可生成最近 7、30 或 90 天的数据。
 
+## 生成论坛演示数据
+
+项目提供确定性数据生成命令，用于学习和验证 DAU、WAU、MAU、内容消费漏斗、发帖/回复/点赞、用户行为分层及 D1/D7/D30 留存：
+
+```bash
+.venv/bin/python manage.py seed_demo_data
+```
+
+默认生成截至昨天的 60 天数据和 180 个演示用户，并自动重算全部日指标与留存。演示数据包括：
+
+- `reader`、`liker`、`discusser`、`creator` 四类行为分布；
+- 登录用户及匿名用户的页面、板块和帖子浏览；
+- 与业务表一致的帖子、回复、点赞和取消点赞事件；
+- 跨 60 天注册 Cohort，支持 D1、D7、D30 留存；
+- 可复现的随机种子，便于重复学习和测试。
+
+自定义规模：
+
+```bash
+.venv/bin/python manage.py seed_demo_data --days 90 --users 300 --seed 20260810
+```
+
+此前已生成过演示数据时，需要明确使用 `--reset`：
+
+```bash
+.venv/bin/python manage.py seed_demo_data --reset
+```
+
+`--reset` 只删除用户名以 `demo_` 开头且由生成器标记的演示数据，不删除普通用户内容。所有演示用户使用密码 `DemoForum2026!`；这些账号不是工作人员，不能访问指标后台。
+
 ## PostgreSQL
 
 启动数据库：
