@@ -16,6 +16,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     HRFlowable,
     PageBreak,
+    PageBreakIfNotEmpty,
     Paragraph,
     Preformatted,
     SimpleDocTemplate,
@@ -253,6 +254,12 @@ def markdown_to_story(text, styles, available_width):
             continue
         if stripped == '---':
             flush_paragraph()
+            next_index = index + 1
+            while next_index < len(lines) and not lines[next_index].strip():
+                next_index += 1
+            if next_index < len(lines) and re.match(r'^##\s+考核', lines[next_index].strip()):
+                index += 1
+                continue
             story.extend([Spacer(1, 5), HRFlowable(width='100%', thickness=0.7, color=colors.HexColor('#d0d5dd')), Spacer(1, 5)])
             index += 1
             continue
@@ -267,7 +274,9 @@ def markdown_to_story(text, styles, available_width):
                 exam_count += 1
             style = styles['Title'] if level == 1 else styles[f'H{level}']
             if title == '对应参考答案':
-                story.append(PageBreak())
+                # A long question may already have flowed onto a fresh page.
+                # Avoid emitting a second break and creating a blank PDF page.
+                story.append(PageBreakIfNotEmpty())
                 style = ParagraphStyle('AnswerHeading', parent=styles['H3'], textColor=colors.HexColor('#067647'))
             if title in {'一票否决错误', '全局一票否决错误'}:
                 style = ParagraphStyle('ErrorHeading', parent=styles['H3'], textColor=colors.HexColor('#b42318'))
