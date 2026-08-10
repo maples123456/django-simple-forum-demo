@@ -45,6 +45,7 @@ class UserActivityDaily(models.Model):
     post_count = models.PositiveIntegerField(default=0)
     reply_count = models.PositiveIntegerField(default=0)
     like_count = models.PositiveIntegerField(default=0)
+    unlike_count = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['-activity_date', 'user_id']
@@ -59,10 +60,20 @@ class ProductMetricsDaily(models.Model):
     new_users = models.PositiveIntegerField(default=0)
     session_count = models.PositiveIntegerField(default=0)
     page_views = models.PositiveIntegerField(default=0)
+    board_views = models.PositiveIntegerField(default=0)
     post_views = models.PositiveIntegerField(default=0)
+    page_view_users = models.PositiveIntegerField(default=0)
+    board_view_users = models.PositiveIntegerField(default=0)
+    post_view_users = models.PositiveIntegerField(default=0)
     posts_created = models.PositiveIntegerField(default=0)
+    posting_users = models.PositiveIntegerField(default=0)
     replies_created = models.PositiveIntegerField(default=0)
+    replying_users = models.PositiveIntegerField(default=0)
     likes_created = models.PositiveIntegerField(default=0)
+    liking_users = models.PositiveIntegerField(default=0)
+    unlikes_created = models.PositiveIntegerField(default=0)
+    anonymous_visitors = models.PositiveIntegerField(default=0)
+    anonymous_page_views = models.PositiveIntegerField(default=0)
     d1_retention_rate = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     d7_retention_rate = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     d30_retention_rate = models.DecimalField(max_digits=6, decimal_places=2, default=0)

@@ -2,6 +2,7 @@ import json
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.db.models import Sum
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -57,8 +58,10 @@ class AnalyticsTests(TestCase):
         self.assertContains(response, 'react/assets/app.js')
         response = self.client.get(reverse('analytics:dashboard_api'))
         self.assertEqual(response.status_code, 200)
-        self.assertIn('summary', response.json())
-        self.assertEqual(response.json()['summary']['d1Retention'], 40.0)
+        payload = response.json()
+        self.assertIn('summary', payload)
+        self.assertEqual(payload['summary']['d1Retention'], 40.0)
+        self.assertTrue({'trend', 'funnel', 'segments', 'boards', 'posts', 'cohorts'} <= payload.keys())
         self.assertIn('no-cache', response.headers['Cache-Control'])
 
     def test_dashboard_refresh_only_generates_completed_days(self):
@@ -90,6 +93,14 @@ class DemoDataTests(TestCase):
         self.assertTrue(AnalyticsEvent.objects.filter(event_name='post_create', properties__demo=True).exists())
         self.assertTrue(UserActivityDaily.objects.exists())
         self.assertEqual(ProductMetricsDaily.objects.filter(metric_date__range=(result['start_date'], result['end_date'])).count(), 31)
+        totals = ProductMetricsDaily.objects.filter(metric_date__range=(result['start_date'], result['end_date'])).aggregate(
+            board_views=Sum('board_views'),
+            post_view_users=Sum('post_view_users'),
+            anonymous_visitors=Sum('anonymous_visitors'),
+        )
+        self.assertGreater(totals['board_views'], 0)
+        self.assertGreater(totals['post_view_users'], 0)
+        self.assertGreater(totals['anonymous_visitors'], 0)
         self.assertTrue(RetentionCohort.objects.filter(retention_day=1).exists())
 
         with self.assertRaisesMessage(ValueError, '演示数据已经存在'):

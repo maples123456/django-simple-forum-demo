@@ -39,6 +39,11 @@ def generate_day(day):
     User = get_user_model()
     start, end = _day_range(day)
     events = _eligible_events(start, end)
+    anonymous_events = AnalyticsEvent.objects.filter(
+        occurred_at__gte=start,
+        occurred_at__lt=end,
+        user__isnull=True,
+    )
     new_user_ids = set(User.objects.filter(date_joined__gte=start, date_joined__lt=end, is_staff=False, is_superuser=False).values_list('id', flat=True))
     activity = {
         row['user_id']: row
@@ -51,6 +56,7 @@ def generate_day(day):
             post_count=Count('id', filter=Q(event_name='post_create')),
             reply_count=Count('id', filter=Q(event_name='reply_create')),
             like_count=Count('id', filter=Q(event_name='post_like')),
+            unlike_count=Count('id', filter=Q(event_name='post_unlike')),
         )
     }
     UserActivityDaily.objects.filter(activity_date=day).delete()
@@ -67,16 +73,29 @@ def generate_day(day):
             post_count=values.get('post_count', 0),
             reply_count=values.get('reply_count', 0),
             like_count=values.get('like_count', 0),
+            unlike_count=values.get('unlike_count', 0),
         )
         for user_id, values in ({user_id: activity.get(user_id, {}) for user_id in set(activity) | new_user_ids}).items()
     ])
     totals = events.aggregate(
         session_count=Count('session_id', distinct=True, filter=~Q(session_id='')),
         page_views=Count('id', filter=Q(event_name='page_view')),
+        board_views=Count('id', filter=Q(event_name='board_view')),
         post_views=Count('id', filter=Q(event_name='post_view')),
+        page_view_users=Count('user_id', distinct=True, filter=Q(event_name='page_view')),
+        board_view_users=Count('user_id', distinct=True, filter=Q(event_name='board_view')),
+        post_view_users=Count('user_id', distinct=True, filter=Q(event_name='post_view')),
         posts_created=Count('id', filter=Q(event_name='post_create')),
+        posting_users=Count('user_id', distinct=True, filter=Q(event_name='post_create')),
         replies_created=Count('id', filter=Q(event_name='reply_create')),
+        replying_users=Count('user_id', distinct=True, filter=Q(event_name='reply_create')),
         likes_created=Count('id', filter=Q(event_name='post_like')),
+        liking_users=Count('user_id', distinct=True, filter=Q(event_name='post_like')),
+        unlikes_created=Count('id', filter=Q(event_name='post_unlike')),
+    )
+    anonymous_totals = anonymous_events.aggregate(
+        anonymous_visitors=Count('anonymous_id', distinct=True, filter=~Q(anonymous_id='')),
+        anonymous_page_views=Count('id', filter=Q(event_name='page_view')),
     )
     ProductMetricsDaily.objects.update_or_create(metric_date=day, defaults={
         'dau': events.filter(event_name__in=EFFECTIVE_EVENTS).values('user_id').distinct().count(),
@@ -84,6 +103,7 @@ def generate_day(day):
         'mau': _active_user_count(day - timedelta(days=29), day),
         'new_users': len(new_user_ids),
         **totals,
+        **anonymous_totals,
     })
 
 
