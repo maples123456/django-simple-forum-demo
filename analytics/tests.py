@@ -7,6 +7,8 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from forum.models import Board, Post
+
 from .events import record_event
 from .demo_data import DEMO_USERNAME_PREFIX, generate_demo_data
 from .models import AnalyticsEvent, ProductMetricsDaily, RetentionCohort, UserActivityDaily
@@ -74,6 +76,45 @@ class AnalyticsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(ProductMetricsDaily.objects.filter(metric_date=timezone.localdate()).exists())
         self.assertTrue(ProductMetricsDaily.objects.filter(metric_date=timezone.localdate() - timedelta(days=1)).exists())
+
+    def test_dashboard_contracts_keep_visitors_activity_and_likes_distinct(self):
+        day = timezone.localdate() - timedelta(days=1)
+        occurred_at, _ = services_day_range(day)
+        get_user_model().objects.filter(pk=self.user.pk).update(date_joined=occurred_at)
+        inactive = get_user_model().objects.create_user(username='inactive-new', password='password')
+        get_user_model().objects.filter(pk=inactive.pk).update(date_joined=occurred_at)
+        board = Board.objects.create(name='指标测试')
+        post = Post.objects.create(board=board, author=self.user, title='口径测试', content='测试')
+        post.likes.add(self.user)
+
+        created_events = [
+            record_event('page_view', anonymous_id='linked-browser'),
+            record_event('page_view', anonymous_id='pure-anonymous'),
+            record_event('page_view', user=self.user, anonymous_id='linked-browser'),
+            record_event('post_view', user=self.user, post=post, board=board),
+            record_event('post_like', user=self.user, post=post, board=board),
+            record_event('post_like', user=self.user, post=post, board=board),
+            record_event('post_unlike', user=self.user, post=post, board=board),
+        ]
+        AnalyticsEvent.objects.filter(pk__in=[event.pk for event in created_events]).update(occurred_at=occurred_at)
+        generate_metrics(day, day)
+
+        metric = ProductMetricsDaily.objects.get(metric_date=day)
+        self.assertEqual(UserActivityDaily.objects.filter(activity_date=day).count(), 2)
+        self.assertEqual(metric.dau, 1)
+        self.assertEqual(metric.anonymous_visitors, 1)
+
+        self.client.force_login(self.staff)
+        payload = self.client.get(reverse('analytics:dashboard_api'), {'days': 7}).json()
+        self.assertEqual(payload['summary']['allVisitors'], 2)
+        self.assertEqual(payload['summary']['loggedVisitors'], 1)
+        self.assertEqual(payload['summary']['anonymousVisitors'], 1)
+        self.assertEqual(payload['summary']['likeActions'], 2)
+        self.assertEqual(payload['summary']['likingUsers'], 1)
+        self.assertEqual(payload['summary']['netLikes'], 1)
+        self.assertEqual(payload['summary']['currentLikes'], 1)
+        self.assertTrue(payload['meta']['completeDaysOnly'])
+        self.assertGreaterEqual(len(payload['contracts']), 10)
 
 
 class DemoDataTests(TestCase):

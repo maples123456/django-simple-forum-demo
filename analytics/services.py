@@ -34,6 +34,29 @@ def _active_user_count(start_day, end_day):
     return _eligible_events(start, end).filter(event_name__in=EFFECTIVE_EVENTS).values('user_id').distinct().count()
 
 
+def visitor_counts(start, end):
+    """Return mutually exclusive page-view visitors, stitching anonymous IDs seen after login."""
+    page_views = AnalyticsEvent.objects.filter(
+        occurred_at__gte=start,
+        occurred_at__lt=end,
+        event_name='page_view',
+    ).filter(
+        Q(user__isnull=True) | Q(user__is_staff=False, user__is_superuser=False),
+    )
+    linked_anonymous_ids = page_views.filter(user__isnull=False).exclude(
+        anonymous_id='',
+    ).values('anonymous_id')
+    logged_visitors = page_views.filter(user__isnull=False).values('user_id').distinct().count()
+    anonymous_visitors = page_views.filter(user__isnull=True).exclude(
+        anonymous_id='',
+    ).exclude(anonymous_id__in=linked_anonymous_ids).values('anonymous_id').distinct().count()
+    return {
+        'logged_visitors': logged_visitors,
+        'anonymous_visitors': anonymous_visitors,
+        'all_visitors': logged_visitors + anonymous_visitors,
+    }
+
+
 @transaction.atomic
 def generate_day(day):
     User = get_user_model()
@@ -94,9 +117,9 @@ def generate_day(day):
         unlikes_created=Count('id', filter=Q(event_name='post_unlike')),
     )
     anonymous_totals = anonymous_events.aggregate(
-        anonymous_visitors=Count('anonymous_id', distinct=True, filter=~Q(anonymous_id='')),
         anonymous_page_views=Count('id', filter=Q(event_name='page_view')),
     )
+    visitors = visitor_counts(start, end)
     ProductMetricsDaily.objects.update_or_create(metric_date=day, defaults={
         'dau': events.filter(event_name__in=EFFECTIVE_EVENTS).values('user_id').distinct().count(),
         'wau': _active_user_count(day - timedelta(days=6), day),
@@ -104,6 +127,7 @@ def generate_day(day):
         'new_users': len(new_user_ids),
         **totals,
         **anonymous_totals,
+        'anonymous_visitors': visitors['anonymous_visitors'],
     })
 
 
