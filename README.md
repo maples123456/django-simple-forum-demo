@@ -91,7 +91,12 @@ docker compose up -d postgres
 10 1 * * * /path/to/project/.venv/bin/python /path/to/project/manage.py generate_metrics
 ```
 
-指标生成是幂等的，可以安全重复执行。原始事件保存在 `analytics_analyticsevent`，用户日汇总、产品日指标和留存同期群分别保存在 `analytics_useractivitydaily`、`analytics_productmetricsdaily` 和 `analytics_retentioncohort`。
+指标生成是幂等的，可以安全重复执行。原始事件保存在 `analytics_analyticsevent`；用户日、产品日、板块日、整体留存和首日行为留存分别保存在 `analytics_useractivitydaily`、`analytics_productmetricsdaily`、`analytics_boardmetricsdaily`、`analytics_retentioncohort` 和 `analytics_behaviorretentioncohort`。
+
+## 学习文档
+
+- [论坛常见指标能力评估手册](docs/forum-metrics-assessment-guide.md)：按定义、手算、查询、核验和业务解释五项能力，闭卷考核 WAU/MAU、新增激活、内容参与、匿名注册转化、留存、帖子回应质量和板块指标。
+- [analytics/services.py 数据转换学习笔记](docs/analytics-services-study-notes.md)：逐步理解事件如何生成用户日和产品日汇总。
 
 ## React 开发
 
