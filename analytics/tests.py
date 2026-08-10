@@ -45,6 +45,10 @@ class AnalyticsTests(TestCase):
         self.assertEqual(float(cohort.retention_rate), 100.0)
 
     def test_dashboard_requires_staff(self):
+        yesterday = timezone.localdate() - timedelta(days=1)
+        ProductMetricsDaily.objects.create(metric_date=yesterday, dau=2, wau=4, mau=5)
+        RetentionCohort.objects.create(cohort_date=yesterday - timedelta(days=2), retention_day=1, cohort_size=4, retained_users=1, retention_rate=25)
+        RetentionCohort.objects.create(cohort_date=yesterday - timedelta(days=3), retention_day=1, cohort_size=1, retained_users=1, retention_rate=100)
         self.client.force_login(self.user)
         response = self.client.get(reverse('analytics:dashboard'))
         self.assertEqual(response.status_code, 302)
@@ -54,6 +58,19 @@ class AnalyticsTests(TestCase):
         response = self.client.get(reverse('analytics:dashboard_api'))
         self.assertEqual(response.status_code, 200)
         self.assertIn('summary', response.json())
+        self.assertEqual(response.json()['summary']['d1Retention'], 40.0)
+        self.assertIn('no-cache', response.headers['Cache-Control'])
+
+    def test_dashboard_refresh_only_generates_completed_days(self):
+        self.client.force_login(self.staff)
+        response = self.client.post(
+            reverse('analytics:refresh_metrics'),
+            data=json.dumps({'days': 7}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(ProductMetricsDaily.objects.filter(metric_date=timezone.localdate()).exists())
+        self.assertTrue(ProductMetricsDaily.objects.filter(metric_date=timezone.localdate() - timedelta(days=1)).exists())
 
 
 class DemoDataTests(TestCase):

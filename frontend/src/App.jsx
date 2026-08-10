@@ -3,7 +3,7 @@ import './App.css'
 
 const api = async (url, options = {}) => {
   const headers = { 'X-Analytics-Session': sessionId, ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers }
-  const response = await fetch(url, { credentials: 'same-origin', ...options, headers })
+  const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', ...options, headers })
   if (!response.ok) throw new Error(await response.text() || '请求失败')
   return response.json()
 }
@@ -46,10 +46,11 @@ function AnalyticsDashboard() {
   const changeDays = (value) => { const range = Number(value); setDays(range); load(range) }
   const refresh = async () => { setLoading(true); try { await api('/analytics/api/refresh/', { method: 'POST', headers: { 'X-CSRFToken': csrf() }, body: JSON.stringify({ days }) }); await load(days) } catch (err) { setError(err.message); setLoading(false) } }
   const summary = data?.summary || {}
+  const cards = [['DAU', summary.dau], ['WAU', summary.wau], ['MAU', summary.mau], ['新增用户', summary.newUsers], ['D1 留存', `${summary.d1Retention || 0}%`, `最近 ${days} 天成熟 Cohort`], ['D7 留存', `${summary.d7Retention || 0}%`, `最近 ${days} 天成熟 Cohort`]]
   return <main className="analytics-shell"><header><div><span>ADMIN ANALYTICS</span><h1>论坛数据指标</h1><p>登录用户活跃、增长、内容互动和新增用户留存。</p></div><a href="/">返回论坛</a></header>
     <div className="toolbar"><select value={days} onChange={event => changeDays(event.target.value)}><option value="7">最近 7 天</option><option value="30">最近 30 天</option><option value="90">最近 90 天</option></select><button onClick={refresh} disabled={loading}>{loading ? '生成中…' : '重新生成指标'}</button></div>
     {error && <p className="error">{error}</p>}
-    <section className="metric-grid">{[['DAU', summary.dau], ['WAU', summary.wau], ['MAU', summary.mau], ['新增用户', summary.newUsers], ['D1 留存', `${summary.d1Retention || 0}%`], ['D7 留存', `${summary.d7Retention || 0}%`]].map(([label, value]) => <article key={label}><span>{label}</span><strong>{value ?? 0}</strong><small>{summary.date || '暂无数据'}</small></article>)}</section>
+    <section className="metric-grid">{cards.map(([label, value, note]) => <article key={label}><span>{label}</span><strong>{value ?? 0}</strong><small>{note || summary.date || '暂无数据'}</small></article>)}</section>
     <section className="analytics-card"><div className="card-heading"><div><h2>DAU 趋势</h2><p>每日产生至少一次有效行为的非管理员登录用户。</p></div></div>{data?.trend?.length ? <TrendChart data={data.trend}/> : <p className="empty-data">点击“重新生成指标”创建第一批汇总数据。</p>}</section>
     <section className="analytics-card"><h2>内容互动趋势</h2><div className="data-table"><table><thead><tr><th>日期</th><th>浏览</th><th>帖子浏览</th><th>新增帖子</th><th>回复</th><th>点赞</th></tr></thead><tbody>{data?.trend?.slice().reverse().map(row => <tr key={row.date}><td>{row.date}</td><td>{row.pageViews}</td><td>{row.postViews}</td><td>{row.posts}</td><td>{row.replies}</td><td>{row.likes}</td></tr>)}</tbody></table></div></section>
     <section className="analytics-card"><h2>新增用户留存 Cohort</h2><p>按注册日期分组，统计第 1、7、30 天再次活跃的用户比例。</p><div className="data-table"><table><thead><tr><th>注册日期</th><th>新增用户</th><th>D1</th><th>D7</th><th>D30</th></tr></thead><tbody>{data?.cohorts?.map(row => <tr key={row.date}><td>{row.date}</td><td>{row.cohortSize}</td><td>{row.d1 == null ? '—' : `${row.d1}%`}</td><td>{row.d7 == null ? '—' : `${row.d7}%`}</td><td>{row.d30 == null ? '—' : `${row.d30}%`}</td></tr>)}</tbody></table></div></section>
