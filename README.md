@@ -95,8 +95,16 @@ docker compose up -d postgres
 
 ## 学习文档
 
-- [论坛常见指标能力评估手册](docs/forum-metrics-assessment-guide.md)：按定义、手算、查询、核验和业务解释五项能力，闭卷考核 WAU/MAU、新增激活、内容参与、匿名注册转化、留存、帖子回应质量和板块指标。
+- [论坛常见指标能力评估手册（Markdown）](docs/forum-metrics-assessment-guide.md)：使用 GFM 表格，适合在 GitHub 和支持 GFM 的编辑器中阅读、修改。
+- [论坛常见指标能力评估手册（PDF）](output/pdf/forum-metrics-assessment-guide.pdf)：固定表格边界、全单元格居中，适合稳定查看和打印，不受 Markdown 渲染器影响。
 - [analytics/services.py 数据转换学习笔记](docs/analytics-services-study-notes.md)：逐步理解事件如何生成用户日和产品日汇总。
+
+重新生成 PDF：
+
+```bash
+.venv/bin/python -m pip install -r requirements-docs.txt
+.venv/bin/python scripts/render_assessment_pdf.py
+```
 
 ## React 开发
 

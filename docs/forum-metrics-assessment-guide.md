@@ -8,42 +8,13 @@
 
 “看懂 SQL 或 Django ORM”不等于掌握指标。每项考核都按五种能力评分：
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">能力</th>
-      <th align="center">分值</th>
-      <th align="center">合格表现</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">指标定义</td>
-      <td align="center">20</td>
-      <td align="center">明确用户范围、行为、时间、去重和数据完整性</td>
-    </tr>
-    <tr>
-      <td align="center">手工计算</td>
-      <td align="center">20</td>
-      <td align="center">展示过滤、分组、去重、分子和分母的变化过程</td>
-    </tr>
-    <tr>
-      <td align="center">查询实现</td>
-      <td align="center">20</td>
-      <td align="center">能写出正确 SQL、Django ORM 或清晰伪代码</td>
-    </tr>
-    <tr>
-      <td align="center">结果核验</td>
-      <td align="center">20</td>
-      <td align="center">至少提出四项可执行检查</td>
-    </tr>
-    <tr>
-      <td align="center">业务解释</td>
-      <td align="center">20</td>
-      <td align="center">说明指标能回答什么、不能回答什么以及下一步分析</td>
-    </tr>
-  </tbody>
-</table>
+| 能力 | 分值 | 合格表现 |
+| :---: | :---: | :---: |
+| 指标定义 | 20 | 明确用户范围、行为、时间、去重和数据完整性 |
+| 手工计算 | 20 | 展示过滤、分组、去重、分子和分母的变化过程 |
+| 查询实现 | 20 | 能写出正确 SQL、Django ORM 或清晰伪代码 |
+| 结果核验 | 20 | 至少提出四项可执行检查 |
+| 业务解释 | 20 | 说明指标能回答什么、不能回答什么以及下一步分析 |
 
 单项达到 80 分且没有关键错误，才算可以在工作中使用。建议每次只选择一个指标，在 30～45 分钟内闭卷完成。
 
@@ -78,52 +49,15 @@
 
 ## 4. 考核目录
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">编号</th>
-      <th align="center">指标主题</th>
-      <th align="center">核心难点</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">1</td>
-      <td align="center">WAU、MAU 与活跃频率</td>
-      <td align="center">跨日用户去重与滚动窗口</td>
-    </tr>
-    <tr>
-      <td align="center">2</td>
-      <td align="center">新增激活率</td>
-      <td align="center">保留未激活用户并稳定分母</td>
-    </tr>
-    <tr>
-      <td align="center">3</td>
-      <td align="center">发帖、回复和点赞参与</td>
-      <td align="center">区分动作次数与参与用户数</td>
-    </tr>
-    <tr>
-      <td align="center">4</td>
-      <td align="center">匿名 UV 与注册转化</td>
-      <td align="center">匿名身份回连与转化归因</td>
-    </tr>
-    <tr>
-      <td align="center">5</td>
-      <td align="center">D1、D7 留存与 Cohort 成熟度</td>
-      <td align="center">Cohort 时间、观察期和加权汇总</td>
-    </tr>
-    <tr>
-      <td align="center">6</td>
-      <td align="center">帖子回应质量</td>
-      <td align="center">帖子粒度、零回复和首次回复时间</td>
-    </tr>
-    <tr>
-      <td align="center">7</td>
-      <td align="center">板块级活跃与互动</td>
-      <td align="center">分组去重、跨板块重叠与绝对贡献量</td>
-    </tr>
-  </tbody>
-</table>
+| 编号 | 指标主题 | 核心难点 |
+| :---: | :---: | :---: |
+| 1 | WAU、MAU 与活跃频率 | 跨日用户去重与滚动窗口 |
+| 2 | 新增激活率 | 保留未激活用户并稳定分母 |
+| 3 | 发帖、回复和点赞参与 | 区分动作次数与参与用户数 |
+| 4 | 匿名 UV 与注册转化 | 匿名身份回连与转化归因 |
+| 5 | D1、D7 留存与 Cohort 成熟度 | Cohort 时间、观察期和加权汇总 |
+| 6 | 帖子回应质量 | 帖子粒度、零回复和首次回复时间 |
+| 7 | 板块级活跃与互动 | 分组去重、跨板块重叠与绝对贡献量 |
 
 ---
 
@@ -137,72 +71,13 @@
 
 08-10 为完整自然日。下面只列出用户产生有效事件的日期：
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">用户</th>
-      <th align="center">用户类型</th>
-      <th align="center">07-12</th>
-      <th align="center">08-03</th>
-      <th align="center">08-04</th>
-      <th align="center">08-05</th>
-      <th align="center">08-08</th>
-      <th align="center">08-10</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">U1</td>
-      <td align="center">普通用户</td>
-      <td align="center">✓</td>
-      <td align="center"></td>
-      <td align="center">✓</td>
-      <td align="center">✓</td>
-      <td align="center">✓</td>
-      <td align="center">✓</td>
-    </tr>
-    <tr>
-      <td align="center">U2</td>
-      <td align="center">普通用户</td>
-      <td align="center"></td>
-      <td align="center">✓</td>
-      <td align="center">✓</td>
-      <td align="center"></td>
-      <td align="center"></td>
-      <td align="center">✓</td>
-    </tr>
-    <tr>
-      <td align="center">U3</td>
-      <td align="center">普通用户</td>
-      <td align="center"></td>
-      <td align="center"></td>
-      <td align="center"></td>
-      <td align="center">✓</td>
-      <td align="center"></td>
-      <td align="center"></td>
-    </tr>
-    <tr>
-      <td align="center">U4</td>
-      <td align="center">staff</td>
-      <td align="center">✓</td>
-      <td align="center">✓</td>
-      <td align="center">✓</td>
-      <td align="center">✓</td>
-      <td align="center">✓</td>
-      <td align="center">✓</td>
-    </tr>
-    <tr>
-      <td align="center">U5</td>
-      <td align="center">普通用户</td>
-      <td align="center">✓</td>
-      <td align="center"></td>
-      <td align="center"></td>
-      <td align="center"></td>
-      <td align="center"></td>
-      <td align="center"></td>
-    </tr>
-  </tbody>
-</table>
+| 用户 | 用户类型 | 07-12 | 08-03 | 08-04 | 08-05 | 08-08 | 08-10 |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| U1 | 普通用户 | ✓ |  | ✓ | ✓ | ✓ | ✓ |
+| U2 | 普通用户 |  | ✓ | ✓ |  |  | ✓ |
+| U3 | 普通用户 |  |  |  | ✓ |  |  |
+| U4 | staff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| U5 | 普通用户 | ✓ |  |  |  |  |  |
 
 ### 评分任务
 
@@ -247,49 +122,20 @@
 - 把 `DAU/WAU` 称为 D1 或 D7 留存。
 - 把 staff 用户计入活跃用户。
 
-
 ### 对应参考答案
 
 > **核对方式：** 完成定义、手算、查询、核验和解释后，再展开核对以下关键结果。
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">指标</th>
-      <th align="center">用户集合</th>
-      <th align="center">结果</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">DAU</td>
-      <td align="center">U1、U2</td>
-      <td align="center">2</td>
-    </tr>
-    <tr>
-      <td align="center">WAU</td>
-      <td align="center">U1、U2、U3</td>
-      <td align="center">3</td>
-    </tr>
-    <tr>
-      <td align="center">MAU</td>
-      <td align="center">U1、U2、U3、U5</td>
-      <td align="center">4</td>
-    </tr>
-    <tr>
-      <td align="center">DAU/WAU</td>
-      <td align="center">2 / 3</td>
-      <td align="center">66.67%</td>
-    </tr>
-    <tr>
-      <td align="center">DAU/MAU</td>
-      <td align="center">2 / 4</td>
-      <td align="center">50%</td>
-    </tr>
-  </tbody>
-</table>
+| 指标 | 用户集合 | 结果 |
+| :---: | :---: | :---: |
+| DAU | U1、U2 | 2 |
+| WAU | U1、U2、U3 | 3 |
+| MAU | U1、U2、U3、U5 | 4 |
+| DAU/WAU | 2 / 3 | 66.67% |
+| DAU/MAU | 2 / 4 | 50% |
 
 U1 在 7 天内活跃多次，但 WAU 只计算一次。U4 是 staff，所有窗口都排除。
+
 ---
 
 ## 考核二：新增激活率
@@ -302,48 +148,13 @@ U1 在 7 天内活跃多次，但 WAU 只计算一次。U4 是 staff，所有窗
 
 用户注册和当天行为如下：
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">用户</th>
-      <th align="center">用户类型</th>
-      <th align="center">注册时间</th>
-      <th align="center">当天行为</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">U1</td>
-      <td align="center">普通用户</td>
-      <td align="center">08-10 09:00</td>
-      <td align="center"><code>sign_up</code>、<code>page_view</code></td>
-    </tr>
-    <tr>
-      <td align="center">U2</td>
-      <td align="center">普通用户</td>
-      <td align="center">08-10 10:00</td>
-      <td align="center"><code>sign_up</code>、<code>login</code></td>
-    </tr>
-    <tr>
-      <td align="center">U3</td>
-      <td align="center">普通用户</td>
-      <td align="center">08-10 11:00</td>
-      <td align="center"><code>sign_up</code>、<code>reply_create</code></td>
-    </tr>
-    <tr>
-      <td align="center">U4</td>
-      <td align="center">普通用户</td>
-      <td align="center">08-10 12:00</td>
-      <td align="center"><code>sign_up</code>；08-11 才产生 <code>post_view</code></td>
-    </tr>
-    <tr>
-      <td align="center">U5</td>
-      <td align="center">staff</td>
-      <td align="center">08-10 13:00</td>
-      <td align="center"><code>sign_up</code>、<code>page_view</code></td>
-    </tr>
-  </tbody>
-</table>
+| 用户 | 用户类型 | 注册时间 | 当天行为 |
+| :---: | :---: | :---: | :---: |
+| U1 | 普通用户 | 08-10 09:00 | `sign_up`、`page_view` |
+| U2 | 普通用户 | 08-10 10:00 | `sign_up`、`login` |
+| U3 | 普通用户 | 08-10 11:00 | `sign_up`、`reply_create` |
+| U4 | 普通用户 | 08-10 12:00 | `sign_up`；08-11 才产生 `post_view` |
+| U5 | staff | 08-10 13:00 | `sign_up`、`page_view` |
 
 ### 评分任务
 
@@ -393,7 +204,6 @@ U1 在 7 天内活跃多次，但 WAU 只计算一次。U4 是 staff，所有窗
 - 把次日活跃算入注册日激活。
 - 从事件表内连接新增用户后丢失零事件用户。
 
-
 ### 对应参考答案
 
 > **核对方式：** 完成定义、手算、查询、核验和解释后，再展开核对以下关键结果。
@@ -405,6 +215,7 @@ U1 在 7 天内活跃多次，但 WAU 只计算一次。U4 是 staff，所有窗
 ```
 
 U2 只有 `login`；U4 的有效行为发生在次日；U5 是 staff。
+
 ---
 
 ## 考核三：发帖、回复和点赞参与
@@ -417,54 +228,13 @@ U2 只有 `login`；U4 的有效行为发生在次日；U5 是 staff。
 
 08-10 的用户日数据：
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">用户</th>
-      <th align="center">是否活跃</th>
-      <th align="center">发帖数</th>
-      <th align="center">回复数</th>
-      <th align="center">点赞动作数</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">U1</td>
-      <td align="center">1</td>
-      <td align="center">3</td>
-      <td align="center">0</td>
-      <td align="center">1</td>
-    </tr>
-    <tr>
-      <td align="center">U2</td>
-      <td align="center">1</td>
-      <td align="center">0</td>
-      <td align="center">2</td>
-      <td align="center">0</td>
-    </tr>
-    <tr>
-      <td align="center">U3</td>
-      <td align="center">1</td>
-      <td align="center">0</td>
-      <td align="center">1</td>
-      <td align="center">2</td>
-    </tr>
-    <tr>
-      <td align="center">U4</td>
-      <td align="center">1</td>
-      <td align="center">1</td>
-      <td align="center">0</td>
-      <td align="center">0</td>
-    </tr>
-    <tr>
-      <td align="center">U5</td>
-      <td align="center">1</td>
-      <td align="center">0</td>
-      <td align="center">0</td>
-      <td align="center">0</td>
-    </tr>
-  </tbody>
-</table>
+| 用户 | 是否活跃 | 发帖数 | 回复数 | 点赞动作数 |
+| :---: | :---: | :---: | :---: | :---: |
+| U1 | 1 | 3 | 0 | 1 |
+| U2 | 1 | 0 | 2 | 0 |
+| U3 | 1 | 0 | 1 | 2 |
+| U4 | 1 | 1 | 0 | 0 |
+| U5 | 1 | 0 | 0 | 0 |
 
 ### 评分任务
 
@@ -518,57 +288,20 @@ U2 只有 `login`；U4 的有效行为发生在次日；U5 是 staff。
 - 把每日发帖用户数求和当成 30 日发帖用户数。
 - 认为发帖、回复、点赞用户三类互斥。
 
-
 ### 对应参考答案
 
 > **核对方式：** 完成定义、手算、查询、核验和解释后，再展开核对以下关键结果。
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">指标</th>
-      <th align="center">计算</th>
-      <th align="center">结果</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">DAU</td>
-      <td align="center">U1～U5</td>
-      <td align="center">5</td>
-    </tr>
-    <tr>
-      <td align="center">发帖用户数</td>
-      <td align="center">U1、U4</td>
-      <td align="center">2</td>
-    </tr>
-    <tr>
-      <td align="center">回复用户数</td>
-      <td align="center">U2、U3</td>
-      <td align="center">2</td>
-    </tr>
-    <tr>
-      <td align="center">点赞用户数</td>
-      <td align="center">U1、U3</td>
-      <td align="center">2</td>
-    </tr>
-    <tr>
-      <td align="center">发帖率</td>
-      <td align="center">2 / 5</td>
-      <td align="center">40%</td>
-    </tr>
-    <tr>
-      <td align="center">回复率</td>
-      <td align="center">2 / 5</td>
-      <td align="center">40%</td>
-    </tr>
-    <tr>
-      <td align="center">人均发帖数</td>
-      <td align="center">4 / 2</td>
-      <td align="center">2</td>
-    </tr>
-  </tbody>
-</table>
+| 指标 | 计算 | 结果 |
+| :---: | :---: | :---: |
+| DAU | U1～U5 | 5 |
+| 发帖用户数 | U1、U4 | 2 |
+| 回复用户数 | U2、U3 | 2 |
+| 点赞用户数 | U1、U3 | 2 |
+| 发帖率 | 2 / 5 | 40% |
+| 回复率 | 2 / 5 | 40% |
+| 人均发帖数 | 4 / 2 | 2 |
+
 ---
 
 ## 考核四：匿名 UV 与注册转化
@@ -581,78 +314,18 @@ U2 只有 `login`；U4 的有效行为发生在次日；U5 是 staff。
 
 事件按时间排序：
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">时间</th>
-      <th align="center">anonymous_id</th>
-      <th align="center">user_id</th>
-      <th align="center">事件</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">09:00</td>
-      <td align="center">A1</td>
-      <td align="center">NULL</td>
-      <td align="center"><code>page_view</code></td>
-    </tr>
-    <tr>
-      <td align="center">09:10</td>
-      <td align="center">A1</td>
-      <td align="center">U1</td>
-      <td align="center"><code>sign_up</code></td>
-    </tr>
-    <tr>
-      <td align="center">09:12</td>
-      <td align="center">A1</td>
-      <td align="center">U1</td>
-      <td align="center"><code>page_view</code></td>
-    </tr>
-    <tr>
-      <td align="center">10:00</td>
-      <td align="center">A2</td>
-      <td align="center">NULL</td>
-      <td align="center"><code>page_view</code></td>
-    </tr>
-    <tr>
-      <td align="center">10:05</td>
-      <td align="center">A2</td>
-      <td align="center">NULL</td>
-      <td align="center"><code>post_view</code></td>
-    </tr>
-    <tr>
-      <td align="center">11:00</td>
-      <td align="center">A3</td>
-      <td align="center">NULL</td>
-      <td align="center"><code>page_view</code></td>
-    </tr>
-    <tr>
-      <td align="center">11:20</td>
-      <td align="center">A4</td>
-      <td align="center">U2</td>
-      <td align="center"><code>sign_up</code></td>
-    </tr>
-    <tr>
-      <td align="center">11:25</td>
-      <td align="center">A4</td>
-      <td align="center">U2</td>
-      <td align="center"><code>page_view</code></td>
-    </tr>
-    <tr>
-      <td align="center">12:00</td>
-      <td align="center">A5</td>
-      <td align="center">NULL</td>
-      <td align="center"><code>page_view</code></td>
-    </tr>
-    <tr>
-      <td align="center">12:30</td>
-      <td align="center">A5</td>
-      <td align="center">U3（staff）</td>
-      <td align="center"><code>sign_up</code></td>
-    </tr>
-  </tbody>
-</table>
+| 时间 | anonymous_id | user_id | 事件 |
+| :---: | :---: | :---: | :---: |
+| 09:00 | A1 | NULL | `page_view` |
+| 09:10 | A1 | U1 | `sign_up` |
+| 09:12 | A1 | U1 | `page_view` |
+| 10:00 | A2 | NULL | `page_view` |
+| 10:05 | A2 | NULL | `post_view` |
+| 11:00 | A3 | NULL | `page_view` |
+| 11:20 | A4 | U2 | `sign_up` |
+| 11:25 | A4 | U2 | `page_view` |
+| 12:00 | A5 | NULL | `page_view` |
+| 12:30 | A5 | U3（staff） | `sign_up` |
 
 ### 评分任务
 
@@ -705,7 +378,6 @@ U2 只有 `login`；U4 的有效行为发生在次日；U5 是 staff。
 - 同一个 `anonymous_id` 多次浏览被计算多次。
 - 把无法归因的注册强行归入匿名转化。
 
-
 ### 对应参考答案
 
 > **核对方式：** 完成定义、手算、查询、核验和解释后，再展开核对以下关键结果。
@@ -720,6 +392,7 @@ U2 只有 `login`；U4 的有效行为发生在次日；U5 是 staff。
 可归因匿名注册 = 1
 匿名注册转化率 = 1 / 4 = 25%
 ```
+
 ---
 
 ## 考核五：D1、D7 留存与 Cohort 成熟度
@@ -732,75 +405,20 @@ U2 只有 `login`；U4 的有效行为发生在次日；U5 是 staff。
 
 #### 用户行为
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">用户</th>
-      <th align="center">注册日</th>
-      <th align="center">08-02 有效活跃</th>
-      <th align="center">08-08 有效活跃</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">U1</td>
-      <td align="center">08-01</td>
-      <td align="center">✓</td>
-      <td align="center"></td>
-    </tr>
-    <tr>
-      <td align="center">U2</td>
-      <td align="center">08-01</td>
-      <td align="center">✓</td>
-      <td align="center">✓</td>
-    </tr>
-    <tr>
-      <td align="center">U3</td>
-      <td align="center">08-01</td>
-      <td align="center"></td>
-      <td align="center">✓</td>
-    </tr>
-    <tr>
-      <td align="center">U4</td>
-      <td align="center">08-01</td>
-      <td align="center"></td>
-      <td align="center"></td>
-    </tr>
-  </tbody>
-</table>
+| 用户 | 注册日 | 08-02 有效活跃 | 08-08 有效活跃 |
+| :---: | :---: | :---: | :---: |
+| U1 | 08-01 | ✓ |  |
+| U2 | 08-01 | ✓ | ✓ |
+| U3 | 08-01 |  | ✓ |
+| U4 | 08-01 |  |  |
 
 #### 成熟 Cohort 汇总
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">注册日</th>
-      <th align="center">新增用户</th>
-      <th align="center">D1 回来人数</th>
-      <th align="center">D1 留存率</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">08-01</td>
-      <td align="center">4</td>
-      <td align="center">2</td>
-      <td align="center">50%</td>
-    </tr>
-    <tr>
-      <td align="center">08-02</td>
-      <td align="center">1</td>
-      <td align="center">1</td>
-      <td align="center">100%</td>
-    </tr>
-    <tr>
-      <td align="center">08-10</td>
-      <td align="center">5</td>
-      <td align="center">未成熟</td>
-      <td align="center">未成熟</td>
-    </tr>
-  </tbody>
-</table>
+| 注册日 | 新增用户 | D1 回来人数 | D1 留存率 |
+| :---: | :---: | :---: | :---: |
+| 08-01 | 4 | 2 | 50% |
+| 08-02 | 1 | 1 | 100% |
+| 08-10 | 5 | 未成熟 | 未成熟 |
 
 ### 评分任务
 
@@ -846,7 +464,6 @@ U2 只有 `login`；U4 的有效行为发生在次日；U5 是 staff。
 - 把尚未成熟的 D7 Cohort 当成 0% 留存。
 - 把行为与留存的相关性解释为因果关系。
 
-
 ### 对应参考答案
 
 > **核对方式：** 完成定义、手算、查询、核验和解释后，再展开核对以下关键结果。
@@ -858,6 +475,7 @@ U2 只有 `login`；U4 的有效行为发生在次日；U5 是 staff。
 ```
 
 不能直接计算 `(50% + 100%) / 2 = 75%`，因为两个 Cohort 的人数不同。08-10 Cohort 尚未成熟，不进入 D1 汇总。
+
 ---
 
 ## 考核六：帖子回应质量
@@ -868,42 +486,12 @@ U2 只有 `login`；U4 的有效行为发生在次日；U5 是 staff。
 
 > 以 08-10 新建帖子为 Cohort，观察截至 08-11 00:00，计算每帖回复数、零回复帖子率和首次回复时间中位数。
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">帖子</th>
-      <th align="center">作者类型</th>
-      <th align="center">发帖时间</th>
-      <th align="center">合格回复时间</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">P1</td>
-      <td align="center">普通用户</td>
-      <td align="center">08-10 09:00</td>
-      <td align="center">11:00、14:00</td>
-    </tr>
-    <tr>
-      <td align="center">P2</td>
-      <td align="center">普通用户</td>
-      <td align="center">08-10 10:00</td>
-      <td align="center">无</td>
-    </tr>
-    <tr>
-      <td align="center">P3</td>
-      <td align="center">普通用户</td>
-      <td align="center">08-10 11:00</td>
-      <td align="center">08-11 13:00</td>
-    </tr>
-    <tr>
-      <td align="center">P4</td>
-      <td align="center">staff</td>
-      <td align="center">08-10 12:00</td>
-      <td align="center">13:00</td>
-    </tr>
-  </tbody>
-</table>
+| 帖子 | 作者类型 | 发帖时间 | 合格回复时间 |
+| :---: | :---: | :---: | :---: |
+| P1 | 普通用户 | 08-10 09:00 | 11:00、14:00 |
+| P2 | 普通用户 | 08-10 10:00 | 无 |
+| P3 | 普通用户 | 08-10 11:00 | 08-11 13:00 |
+| P4 | staff | 08-10 12:00 | 13:00 |
 
 注意：P3 的回复发生在观察截止时间之后。
 
@@ -952,39 +540,17 @@ U2 只有 `login`；U4 的有效行为发生在次日；U5 是 staff。
 - 对零回复帖强行设置首次回复时间为 0。
 - 连接回复明细后直接数帖子行，造成一个帖子被重复计算。
 
-
 ### 对应参考答案
 
 > **核对方式：** 完成定义、手算、查询、核验和解释后，再展开核对以下关键结果。
 
 过滤 staff 帖子和观察截止时间之后的回复后：
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">帖子</th>
-      <th align="center">截止时回复数</th>
-      <th align="center">首次回复耗时</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">P1</td>
-      <td align="center">2</td>
-      <td align="center">2 小时</td>
-    </tr>
-    <tr>
-      <td align="center">P2</td>
-      <td align="center">0</td>
-      <td align="center">不适用</td>
-    </tr>
-    <tr>
-      <td align="center">P3</td>
-      <td align="center">0</td>
-      <td align="center">不适用</td>
-    </tr>
-  </tbody>
-</table>
+| 帖子 | 截止时回复数 | 首次回复耗时 |
+| :---: | :---: | :---: |
+| P1 | 2 | 2 小时 |
+| P2 | 0 | 不适用 |
+| P3 | 0 | 不适用 |
 
 ```text
 每帖回复数 = 2 / 3 = 0.67
@@ -993,6 +559,7 @@ U2 只有 `login`；U4 的有效行为发生在次日；U5 是 staff。
 ```
 
 只有 P1 在观察期内获得回复，所以中位数来自一个有效样本。应同时报告样本量，避免过度解释。
+
 ---
 
 ## 考核七：板块级活跃与互动
@@ -1005,42 +572,13 @@ U2 只有 `login`；U4 的有效行为发生在次日；U5 是 staff。
 
 窗口内用户行为：
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">用户</th>
-      <th align="center">板块</th>
-      <th align="center">行为</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">U1</td>
-      <td align="center">技术交流</td>
-      <td align="center"><code>post_view</code>、<code>reply_create</code></td>
-    </tr>
-    <tr>
-      <td align="center">U1</td>
-      <td align="center">社区生活</td>
-      <td align="center"><code>post_view</code></td>
-    </tr>
-    <tr>
-      <td align="center">U2</td>
-      <td align="center">技术交流</td>
-      <td align="center"><code>post_view</code>、<code>post_like</code></td>
-    </tr>
-    <tr>
-      <td align="center">U3</td>
-      <td align="center">社区生活</td>
-      <td align="center"><code>post_view</code>、<code>reply_create</code></td>
-    </tr>
-    <tr>
-      <td align="center">U3</td>
-      <td align="center">社区生活</td>
-      <td align="center"><code>post_like</code></td>
-    </tr>
-  </tbody>
-</table>
+| 用户 | 板块 | 行为 |
+| :---: | :---: | :---: |
+| U1 | 技术交流 | `post_view`、`reply_create` |
+| U1 | 社区生活 | `post_view` |
+| U2 | 技术交流 | `post_view`、`post_like` |
+| U3 | 社区生活 | `post_view`、`reply_create` |
+| U3 | 社区生活 | `post_like` |
 
 ### 评分任务
 
@@ -1085,78 +623,29 @@ U2 只有 `login`；U4 的有效行为发生在次日；U5 是 staff。
 - 用互动动作数除以活跃用户数并命名为互动用户率。
 - 只比较百分比，不查看用户规模和绝对互动贡献。
 
-
 ### 对应参考答案
 
 > **核对方式：** 完成定义、手算、查询、核验和解释后，再展开核对以下关键结果。
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">板块</th>
-      <th align="center">活跃用户</th>
-      <th align="center">浏览用户</th>
-      <th align="center">互动用户</th>
-      <th align="center">互动率</th>
-      <th align="center">回复动作</th>
-      <th align="center">点赞动作</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">技术交流</td>
-      <td align="center">2</td>
-      <td align="center">2</td>
-      <td align="center">2</td>
-      <td align="center">100%</td>
-      <td align="center">1</td>
-      <td align="center">1</td>
-    </tr>
-    <tr>
-      <td align="center">社区生活</td>
-      <td align="center">2</td>
-      <td align="center">2</td>
-      <td align="center">1</td>
-      <td align="center">50%</td>
-      <td align="center">1</td>
-      <td align="center">1</td>
-    </tr>
-  </tbody>
-</table>
+| 板块 | 活跃用户 | 浏览用户 | 互动用户 | 互动率 | 回复动作 | 点赞动作 |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 技术交流 | 2 | 2 | 2 | 100% | 1 | 1 |
+| 社区生活 | 2 | 2 | 1 | 50% | 1 | 1 |
 
 全站去重活跃用户是 U1、U2、U3，共 3 人，而不是板块活跃用户数之和 4。U1 同时在两个板块活跃。
+
 ---
 
 ## 综合评分与能力等级
 
 ### 单项评分
 
-<table align="center" border="1" cellspacing="0" cellpadding="6" width="100%">
-  <thead>
-    <tr>
-      <th align="center">得分</th>
-      <th align="center">结论</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">90～100</td>
-      <td align="center">能独立交付，并能主动说明口径边界</td>
-    </tr>
-    <tr>
-      <td align="center">80～89</td>
-      <td align="center">基本工作可用，仍需改进核验或业务解释</td>
-    </tr>
-    <tr>
-      <td align="center">60～79</td>
-      <td align="center">会计算，但不足以独立用于业务决策</td>
-    </tr>
-    <tr>
-      <td align="center">0～59</td>
-      <td align="center">对过滤、去重、分母或时间窗口仍有明显误解</td>
-    </tr>
-  </tbody>
-</table>
+| 得分 | 结论 |
+| :---: | :---: |
+| 90～100 | 能独立交付，并能主动说明口径边界 |
+| 80～89 | 基本工作可用，仍需改进核验或业务解释 |
+| 60～79 | 会计算，但不足以独立用于业务决策 |
+| 0～59 | 对过滤、去重、分母或时间窗口仍有明显误解 |
 
 ### 全局一票否决错误
 
