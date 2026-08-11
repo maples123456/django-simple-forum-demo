@@ -98,6 +98,75 @@
     .checklist li { margin-bottom: 8px; }
     .center { text-align: center; }
 
+    .chart-card {
+      margin: 22px 0;
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fbfcfe;
+    }
+
+    .chart-card h3 { margin-top: 0; }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 150px 1fr 70px;
+      gap: 12px;
+      align-items: center;
+      margin: 12px 0;
+    }
+
+    .bar-label { color: var(--text); font-size: 14px; }
+    .bar-track { height: 24px; overflow: hidden; border-radius: 999px; background: #e6eaf2; }
+    .bar-fill { height: 100%; min-width: 12px; border-radius: inherit; background: linear-gradient(90deg, #5478e8, #3157d5); }
+    .bar-value { color: var(--primary); font-weight: 700; text-align: right; }
+
+    .funnel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      margin: 22px 0;
+    }
+
+    .funnel-step {
+      display: flex;
+      min-height: 42px;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border: 1px solid #cbd5ff;
+      border-radius: 8px;
+      background: var(--primary-soft);
+      color: #203b9b;
+      font-weight: 650;
+      text-align: center;
+    }
+
+    .funnel-step small { margin-left: 8px; color: var(--muted); font-weight: 400; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .legend span::before {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-right: 5px;
+      border-radius: 3px;
+      background: #3157d5;
+      content: "";
+      vertical-align: -1px;
+    }
+
+    .legend .removed::before { background: #f0a35b; }
+
     @media (max-width: 760px) {
       main { width: min(100% - 20px, 1120px); margin: 16px auto; }
       header, section { padding: 20px; }
@@ -249,6 +318,48 @@ FROM eligible_users;</code></pre>
       <div class="node"><strong>4 行</strong><small>排除 staff</small></div>
       <div class="arrow">→</div>
       <div class="node"><strong>1 行</strong><small>有效用户 U1</small></div>
+    </div>
+
+    <div class="chart-card">
+      <h3>图表：每一步还剩多少行</h3>
+      <p>以原始事件 6 行为 100%，条形长度表示当前阶段保留的行数。</p>
+      <div class="bar-row">
+        <div class="bar-label">原始事件</div>
+        <div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div>
+        <div class="bar-value">6 行 · 100%</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">JOIN 用户表</div>
+        <div class="bar-track"><div class="bar-fill" style="width: 83.33%"></div></div>
+        <div class="bar-value">5 行 · 83%</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">排除 staff</div>
+        <div class="bar-track"><div class="bar-fill" style="width: 66.67%"></div></div>
+        <div class="bar-value">4 行 · 67%</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">有效事件筛选</div>
+        <div class="bar-track"><div class="bar-fill" style="width: 16.67%"></div></div>
+        <div class="bar-value">1 行 · 17%</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label">用户去重</div>
+        <div class="bar-track"><div class="bar-fill" style="width: 16.67%"></div></div>
+        <div class="bar-value">1 行 · 17%</div>
+      </div>
+      <div class="legend"><span>保留数据</span><span class="removed">被过滤或合并的数据不再进入下一阶段</span></div>
+    </div>
+
+    <div class="chart-card">
+      <h3>图表：DAU 计算漏斗</h3>
+      <div class="funnel" aria-label="DAU 计算漏斗图">
+        <div class="funnel-step" style="width: 100%">原始事件：6 行 <small>包含匿名、管理员和非活跃行为</small></div>
+        <div class="funnel-step" style="width: 84%">连接用户：5 行 <small>匿名事件无法连接 auth_user</small></div>
+        <div class="funnel-step" style="width: 68%">普通用户：4 行 <small>排除 U4 staff</small></div>
+        <div class="funnel-step" style="width: 34%">有效事件：1 行 <small>只剩 U1 的 page_view</small></div>
+        <div class="funnel-step" style="width: 34%">独立活跃用户：1 人 <small>DAU = 1</small></div>
+      </div>
     </div>
 
     <div class="callout warning">
