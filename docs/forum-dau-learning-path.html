@@ -410,6 +410,204 @@
         <tr><th>扫描粒度</th><td>日期级，一天通常只有一行</td></tr>
       </tbody>
     </table>
+
+    <h3>4.1 可直接执行的 SQL</h3>
+    <div class="callout">
+      以下查询使用项目的真实 Django 表名。由于项目启用了
+      <code>USE_TZ = True</code>，建议由应用先把 Asia/Shanghai 的自然日转换为 UTC
+      边界，再绑定给 <code>:day_start_utc</code> 和 <code>:next_day_start_utc</code>。
+      例如 2026-08-10 的边界是：<code>2026-08-09 16:00:00</code>（含）到
+      <code>2026-08-10 16:00:00</code>（不含）。
+    </div>
+
+    <h4>SQL 1：从原始事件表计算 DAU</h4>
+    <pre><code>WITH eligible_events AS (
+    SELECT DISTINCT e.user_id
+    FROM analytics_analyticsevent AS e
+    JOIN auth_user AS u
+      ON u.id = e.user_id
+    WHERE e.occurred_at &gt;= :day_start_utc
+      AND e.occurred_at &lt;  :next_day_start_utc
+      AND e.user_id IS NOT NULL
+      AND u.is_staff = FALSE
+      AND u.is_superuser = FALSE
+      AND e.event_name IN (
+          'page_view',
+          'board_view',
+          'post_view',
+          'post_create',
+          'reply_create',
+          'post_like'
+      )
+)
+SELECT COUNT(*) AS dau
+FROM eligible_events;</code></pre>
+    <p>
+      这条 SQL 的粒度变化是“事件行 → 合格用户集合 → 一个 DAU 数字”。
+      <code>DISTINCT e.user_id</code> 负责当天去重，<code>COUNT(*)</code> 只是在去重后的集合上计数，
+      所以不会把同一用户的多个浏览事件当成多个活跃用户。
+    </p>
+
+    <h4>SQL 2：查看 DAU 的用户明细，用于抽样核验</h4>
+    <pre><code>SELECT DISTINCT
+    e.user_id,
+    u.username
+FROM analytics_analyticsevent AS e
+JOIN auth_user AS u
+  ON u.id = e.user_id
+WHERE e.occurred_at &gt;= :day_start_utc
+  AND e.occurred_at &lt;  :next_day_start_utc
+  AND u.is_staff = FALSE
+  AND u.is_superuser = FALSE
+  AND e.event_name IN (
+      'page_view', 'board_view', 'post_view',
+      'post_create', 'reply_create', 'post_like'
+  )
+ORDER BY e.user_id;</code></pre>
+    <p>
+      抽查结果中的每个 <code>user_id</code>，确认它至少有一条有效事件，且不是 staff 或 superuser。
+      如果想同时看到用户当天的事件数，可以先按用户聚合：
+    </p>
+    <pre><code>SELECT
+    e.user_id,
+    COUNT(*) AS effective_event_count,
+    COUNT(DISTINCT CASE WHEN e.session_id &lt;&gt; '' THEN e.session_id END) AS session_count
+FROM analytics_analyticsevent AS e
+JOIN auth_user AS u ON u.id = e.user_id
+WHERE e.occurred_at &gt;= :day_start_utc
+  AND e.occurred_at &lt;  :next_day_start_utc
+  AND u.is_staff = FALSE
+  AND u.is_superuser = FALSE
+  AND e.event_name IN (
+      'page_view', 'board_view', 'post_view',
+      'post_create', 'reply_create', 'post_like'
+  )
+GROUP BY e.user_id
+ORDER BY e.user_id;</code></pre>
+
+    <h4>SQL 3：从用户日表计算 DAU</h4>
+    <pre><code>SELECT COUNT(DISTINCT a.user_id) AS dau
+FROM analytics_useractivitydaily AS a
+JOIN auth_user AS u
+  ON u.id = a.user_id
+WHERE a.activity_date = :metric_date
+  AND u.is_staff = FALSE
+  AND u.is_superuser = FALSE
+  AND (
+      a.page_view_count
+      + a.board_view_count
+      + a.post_view_count
+      + a.post_count
+      + a.reply_count
+      + a.like_count
+  ) &gt; 0;</code></pre>
+    <p>
+      不能写成 <code>SELECT COUNT(*) FROM analytics_useractivitydaily ...</code>，
+      因为用户日表可能保存当天注册但没有有效行为的用户。这里用有效行为字段之和大于 0
+      过滤，再按 <code>user_id</code> 计数。
+    </p>
+
+    <h4>SQL 4：从产品日表读取看板使用的 DAU</h4>
+    <pre><code>SELECT
+    metric_date,
+    dau,
+    generated_at
+FROM analytics_productmetricsdaily
+WHERE metric_date = :metric_date;</code></pre>
+    <p>
+      这条查询只读取已经生成的结果，不会重新扫描事件。<code>generated_at</code> 用来判断产品日指标是否已经刷新。
+    </p>
+
+    <h4>SQL 5：三条路径对账</h4>
+    <pre><code>WITH event_users AS (
+    SELECT DISTINCT e.user_id
+    FROM analytics_analyticsevent AS e
+    JOIN auth_user AS u ON u.id = e.user_id
+    WHERE e.occurred_at &gt;= :day_start_utc
+      AND e.occurred_at &lt;  :next_day_start_utc
+      AND u.is_staff = FALSE
+      AND u.is_superuser = FALSE
+      AND e.event_name IN (
+          'page_view', 'board_view', 'post_view',
+          'post_create', 'reply_create', 'post_like'
+      )
+),
+daily_users AS (
+    SELECT DISTINCT a.user_id
+    FROM analytics_useractivitydaily AS a
+    JOIN auth_user AS u ON u.id = a.user_id
+    WHERE a.activity_date = :metric_date
+      AND u.is_staff = FALSE
+      AND u.is_superuser = FALSE
+      AND (
+          a.page_view_count + a.board_view_count + a.post_view_count
+          + a.post_count + a.reply_count + a.like_count
+      ) &gt; 0
+),
+product_metric AS (
+    SELECT dau
+    FROM analytics_productmetricsdaily
+    WHERE metric_date = :metric_date
+)
+SELECT
+    (SELECT COUNT(*) FROM event_users) AS event_dau,
+    (SELECT COUNT(*) FROM daily_users) AS daily_dau,
+    (SELECT dau FROM product_metric) AS product_dau,
+    (SELECT COUNT(*) FROM event_users)
+      - (SELECT COUNT(*) FROM daily_users) AS event_daily_diff,
+    (SELECT COUNT(*) FROM event_users)
+      - (SELECT dau FROM product_metric) AS event_product_diff;</code></pre>
+    <p>
+      正常情况下两个差值都应为 0。如果不为 0，先检查用户日表和产品日表是否刷新、
+      有效事件列表是否一致、日期边界是否一致，以及迟到事件是否在中间表生成之后才到达。
+    </p>
+
+    <h4>SQL 6：定位事件层和用户日层不一致的用户</h4>
+    <pre><code>WITH event_users AS (
+    SELECT DISTINCT e.user_id
+    FROM analytics_analyticsevent AS e
+    JOIN auth_user AS u ON u.id = e.user_id
+    WHERE e.occurred_at &gt;= :day_start_utc
+      AND e.occurred_at &lt;  :next_day_start_utc
+      AND u.is_staff = FALSE
+      AND u.is_superuser = FALSE
+      AND e.event_name IN (
+          'page_view', 'board_view', 'post_view',
+          'post_create', 'reply_create', 'post_like'
+      )
+),
+daily_users AS (
+    SELECT DISTINCT a.user_id
+    FROM analytics_useractivitydaily AS a
+    WHERE a.activity_date = :metric_date
+      AND (
+          a.page_view_count + a.board_view_count + a.post_view_count
+          + a.post_count + a.reply_count + a.like_count
+      ) &gt; 0
+)
+SELECT 'event_only' AS difference_type, user_id
+FROM event_users
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM daily_users AS d
+    WHERE d.user_id = event_users.user_id
+)
+
+UNION ALL
+
+SELECT 'daily_only' AS difference_type, user_id
+FROM daily_users
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM event_users AS e
+    WHERE e.user_id = daily_users.user_id
+)
+ORDER BY difference_type, user_id;</code></pre>
+    <p>
+      <code>event_only</code> 表示事件表认为用户活跃，但用户日表没有对应记录；
+      <code>daily_only</code> 表示用户日表认为用户活跃，但事件层没有匹配事件。
+      对这些用户回查原始事件，可以定位生成任务延迟、事件过滤不一致或数据重复问题。
+    </p>
   </section>
 
   <section>
