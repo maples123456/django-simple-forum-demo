@@ -98,74 +98,83 @@
     .checklist li { margin-bottom: 8px; }
     .center { text-align: center; }
 
-    .chart-card {
+    .record-board-wrap {
+      overflow-x: auto;
       margin: 22px 0;
-      padding: 20px;
+      padding-bottom: 8px;
+    }
+
+    .record-board {
+      display: grid;
+      min-width: 1120px;
+      grid-template-columns: repeat(5, minmax(205px, 1fr));
+      gap: 12px;
+    }
+
+    .stage-column {
+      min-height: 560px;
+      padding: 12px;
       border: 1px solid var(--border);
       border-radius: 12px;
       background: #fbfcfe;
     }
 
-    .chart-card h3 { margin-top: 0; }
-
-    .bar-row {
-      display: grid;
-      grid-template-columns: 150px 1fr 70px;
-      gap: 12px;
-      align-items: center;
-      margin: 12px 0;
-    }
-
-    .bar-label { color: var(--text); font-size: 14px; }
-    .bar-track { height: 24px; overflow: hidden; border-radius: 999px; background: #e6eaf2; }
-    .bar-fill { height: 100%; min-width: 12px; border-radius: inherit; background: linear-gradient(90deg, #5478e8, #3157d5); }
-    .bar-value { color: var(--primary); font-weight: 700; text-align: right; }
-
-    .funnel {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 7px;
-      margin: 22px 0;
-    }
-
-    .funnel-step {
-      display: flex;
-      min-height: 42px;
-      align-items: center;
-      justify-content: center;
-      padding: 8px 14px;
-      border: 1px solid #cbd5ff;
-      border-radius: 8px;
-      background: var(--primary-soft);
+    .stage-column h3 {
+      margin: 0 0 4px;
       color: #203b9b;
-      font-weight: 650;
-      text-align: center;
+      font-size: 16px;
     }
 
-    .funnel-step small { margin-left: 8px; color: var(--muted); font-weight: 400; }
-
-    .legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 14px;
-      margin-top: 14px;
+    .stage-column > p {
+      min-height: 48px;
+      margin: 0 0 10px;
       color: var(--muted);
       font-size: 13px;
     }
 
-    .legend span::before {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      margin-right: 5px;
-      border-radius: 3px;
-      background: #3157d5;
-      content: "";
-      vertical-align: -1px;
+    .record-card {
+      margin: 9px 0;
+      padding: 10px;
+      border: 1px solid #cbd5ff;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 2px 7px rgb(16 24 40 / 4%);
+      font-size: 13px;
     }
 
-    .legend .removed::before { background: #f0a35b; }
+    .record-card.discarded {
+      border-color: #f0c28a;
+      background: var(--orange-soft);
+      opacity: .86;
+    }
+
+    .record-card.merged {
+      border-color: #9fd6b7;
+      background: var(--green-soft);
+    }
+
+    .record-card .record-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      color: #203b9b;
+      font-weight: 750;
+    }
+
+    .record-card.discarded .record-title { color: var(--orange); }
+    .record-card.merged .record-title { color: var(--green); }
+    .record-card dl { display: grid; grid-template-columns: 70px 1fr; gap: 2px 6px; margin: 0; }
+    .record-card dt { color: var(--muted); }
+    .record-card dd { margin: 0; overflow-wrap: anywhere; }
+    .record-status { margin-top: 7px; color: var(--muted); font-size: 12px; }
+
+    .board-arrow {
+      margin: 10px 0;
+      color: var(--primary);
+      text-align: center;
+      font-size: 20px;
+    }
 
     @media (max-width: 760px) {
       main { width: min(100% - 20px, 1120px); margin: 16px auto; }
@@ -306,7 +315,7 @@ FROM eligible_users;</code></pre>
         <tr><td><code>JOIN auth_user</code></td><td>E1、E2、E3、E4、E6</td><td>E5：<code>user_id</code> 为 NULL，无法连接用户</td><td>5</td></tr>
         <tr><td>普通用户过滤</td><td>E1、E2、E3、E4</td><td>E6：U4 是 staff</td><td>4</td></tr>
         <tr><td><code>event_name IN (...)</code></td><td>E2：U1 的 <code>page_view</code></td><td>E1、E3、E4 不是有效活跃行为</td><td>1</td></tr>
-        <tr><td><code>DISTINCT user_id</code></td><td>U1</td><td>同一用户重复事件被合并</td><td>1</td></tr>
+        <tr><td><code>DISTINCT user_id</code></td><td>U1</td><td>本例只有一条有效事件；若有多条则合并为一个 U1</td><td>1</td></tr>
       </tbody>
     </table>
 
@@ -320,46 +329,65 @@ FROM eligible_users;</code></pre>
       <div class="node"><strong>1 行</strong><small>有效用户 U1</small></div>
     </div>
 
-    <div class="chart-card">
-      <h3>图表：每一步还剩多少行</h3>
-      <p>以原始事件 6 行为 100%，条形长度表示当前阶段保留的行数。</p>
-      <div class="bar-row">
-        <div class="bar-label">原始事件</div>
-        <div class="bar-track"><div class="bar-fill" style="width: 100%"></div></div>
-        <div class="bar-value">6 行 · 100%</div>
+    <h3>图：每一条记录在处理阶段中的去向</h3>
+    <p>
+      下面不是只展示汇总数字，而是把每一条记录完整画出来。
+      蓝色卡片表示当前阶段保留，橙色卡片表示这一阶段被排除；最后一列展示从事件粒度转换到用户粒度的结果。
+    </p>
+    <div class="record-board-wrap">
+      <div class="record-board" aria-label="DAU 数据逐行过滤和去重图">
+        <div class="stage-column">
+          <h3>阶段 0：原始事件</h3>
+          <p>事件表中的全部 6 行。</p>
+          <div class="record-card"><div class="record-title"><span>E1</span><span>保留候选</span></div><dl><dt>user_id</dt><dd>U1</dd><dt>event</dt><dd>login</dd><dt>身份</dt><dd>普通用户</dd></dl></div>
+          <div class="record-card"><div class="record-title"><span>E2</span><span>保留候选</span></div><dl><dt>user_id</dt><dd>U1</dd><dt>event</dt><dd>page_view</dd><dt>身份</dt><dd>普通用户</dd></dl></div>
+          <div class="record-card"><div class="record-title"><span>E3</span><span>保留候选</span></div><dl><dt>user_id</dt><dd>U2</dd><dt>event</dt><dd>sign_up</dd><dt>身份</dt><dd>普通用户</dd></dl></div>
+          <div class="record-card"><div class="record-title"><span>E4</span><span>保留候选</span></div><dl><dt>user_id</dt><dd>U3</dd><dt>event</dt><dd>post_unlike</dd><dt>身份</dt><dd>普通用户</dd></dl></div>
+          <div class="record-card"><div class="record-title"><span>E5</span><span>保留候选</span></div><dl><dt>user_id</dt><dd>NULL</dd><dt>event</dt><dd>page_view</dd><dt>身份</dt><dd>匿名用户</dd></dl></div>
+          <div class="record-card"><div class="record-title"><span>E6</span><span>保留候选</span></div><dl><dt>user_id</dt><dd>U4</dd><dt>event</dt><dd>post_view</dd><dt>身份</dt><dd>staff</dd></dl></div>
+        </div>
+
+        <div class="stage-column">
+          <h3>阶段 1：JOIN 用户表</h3>
+          <p>E5 没有 user_id，无法连接 auth_user。</p>
+          <div class="record-card"><div class="record-title"><span>E1</span><span>已连接</span></div><dl><dt>user_id</dt><dd>U1</dd><dt>event</dt><dd>login</dd><dt>is_staff</dt><dd>FALSE</dd></dl></div>
+          <div class="record-card"><div class="record-title"><span>E2</span><span>已连接</span></div><dl><dt>user_id</dt><dd>U1</dd><dt>event</dt><dd>page_view</dd><dt>is_staff</dt><dd>FALSE</dd></dl></div>
+          <div class="record-card"><div class="record-title"><span>E3</span><span>已连接</span></div><dl><dt>user_id</dt><dd>U2</dd><dt>event</dt><dd>sign_up</dd><dt>is_staff</dt><dd>FALSE</dd></dl></div>
+          <div class="record-card"><div class="record-title"><span>E4</span><span>已连接</span></div><dl><dt>user_id</dt><dd>U3</dd><dt>event</dt><dd>post_unlike</dd><dt>is_staff</dt><dd>FALSE</dd></dl></div>
+          <div class="record-card"><div class="record-title"><span>E6</span><span>已连接</span></div><dl><dt>user_id</dt><dd>U4</dd><dt>event</dt><dd>post_view</dd><dt>is_staff</dt><dd>TRUE</dd></dl></div>
+          <div class="record-card discarded"><div class="record-title"><span>E5</span><span>被排除</span></div><dl><dt>user_id</dt><dd>NULL</dd><dt>event</dt><dd>page_view</dd><dt>原因</dt><dd>无法连接 auth_user</dd></dl></div>
+        </div>
+
+        <div class="stage-column">
+          <h3>阶段 2：普通用户过滤</h3>
+          <p>保留 is_staff=FALSE 且 is_superuser=FALSE。</p>
+          <div class="record-card"><div class="record-title"><span>E1</span><span>保留</span></div><dl><dt>user_id</dt><dd>U1</dd><dt>event</dt><dd>login</dd><dt>身份</dt><dd>普通用户</dd></dl></div>
+          <div class="record-card"><div class="record-title"><span>E2</span><span>保留</span></div><dl><dt>user_id</dt><dd>U1</dd><dt>event</dt><dd>page_view</dd><dt>身份</dt><dd>普通用户</dd></dl></div>
+          <div class="record-card"><div class="record-title"><span>E3</span><span>保留</span></div><dl><dt>user_id</dt><dd>U2</dd><dt>event</dt><dd>sign_up</dd><dt>身份</dt><dd>普通用户</dd></dl></div>
+          <div class="record-card"><div class="record-title"><span>E4</span><span>保留</span></div><dl><dt>user_id</dt><dd>U3</dd><dt>event</dt><dd>post_unlike</dd><dt>身份</dt><dd>普通用户</dd></dl></div>
+          <div class="record-card discarded"><div class="record-title"><span>E6</span><span>被排除</span></div><dl><dt>user_id</dt><dd>U4</dd><dt>event</dt><dd>post_view</dd><dt>原因</dt><dd>is_staff=TRUE</dd></dl></div>
+        </div>
+
+        <div class="stage-column">
+          <h3>阶段 3：有效事件过滤</h3>
+          <p>只保留六类 EFFECTIVE_EVENTS。</p>
+          <div class="record-card discarded"><div class="record-title"><span>E1</span><span>被排除</span></div><dl><dt>user_id</dt><dd>U1</dd><dt>event</dt><dd>login</dd><dt>原因</dt><dd>不是有效活跃事件</dd></dl></div>
+          <div class="record-card merged"><div class="record-title"><span>E2</span><span>保留</span></div><dl><dt>user_id</dt><dd>U1</dd><dt>event</dt><dd>page_view</dd><dt>结果</dt><dd>合格事件</dd></dl></div>
+          <div class="record-card discarded"><div class="record-title"><span>E3</span><span>被排除</span></div><dl><dt>user_id</dt><dd>U2</dd><dt>event</dt><dd>sign_up</dd><dt>原因</dt><dd>不是有效活跃事件</dd></dl></div>
+          <div class="record-card discarded"><div class="record-title"><span>E4</span><span>被排除</span></div><dl><dt>user_id</dt><dd>U3</dd><dt>event</dt><dd>post_unlike</dd><dt>原因</dt><dd>当前口径不计入</dd></dl></div>
+        </div>
+
+        <div class="stage-column">
+          <h3>阶段 4：用户去重</h3>
+          <p>从合格事件的 user_id 得到用户粒度。</p>
+          <div class="record-card merged"><div class="record-title"><span>U1</span><span>DAU 用户</span></div><dl><dt>来源事件</dt><dd>E2</dd><dt>有效行为</dt><dd>page_view</dd><dt>用户粒度</dt><dd>一天一行</dd><dt>最终指标</dt><dd>DAU +1</dd></dl></div>
+          <div class="callout success" style="margin-top: 14px; padding: 10px; font-size: 13px;">本案例只有一条有效事件，因此去重后仍是 U1 一行；如果 U1 还有第二条有效事件，也只保留一个 U1。</div>
+        </div>
       </div>
-      <div class="bar-row">
-        <div class="bar-label">JOIN 用户表</div>
-        <div class="bar-track"><div class="bar-fill" style="width: 83.33%"></div></div>
-        <div class="bar-value">5 行 · 83%</div>
-      </div>
-      <div class="bar-row">
-        <div class="bar-label">排除 staff</div>
-        <div class="bar-track"><div class="bar-fill" style="width: 66.67%"></div></div>
-        <div class="bar-value">4 行 · 67%</div>
-      </div>
-      <div class="bar-row">
-        <div class="bar-label">有效事件筛选</div>
-        <div class="bar-track"><div class="bar-fill" style="width: 16.67%"></div></div>
-        <div class="bar-value">1 行 · 17%</div>
-      </div>
-      <div class="bar-row">
-        <div class="bar-label">用户去重</div>
-        <div class="bar-track"><div class="bar-fill" style="width: 16.67%"></div></div>
-        <div class="bar-value">1 行 · 17%</div>
-      </div>
-      <div class="legend"><span>保留数据</span><span class="removed">被过滤或合并的数据不再进入下一阶段</span></div>
     </div>
 
-    <div class="chart-card">
-      <h3>图表：DAU 计算漏斗</h3>
-      <div class="funnel" aria-label="DAU 计算漏斗图">
-        <div class="funnel-step" style="width: 100%">原始事件：6 行 <small>包含匿名、管理员和非活跃行为</small></div>
-        <div class="funnel-step" style="width: 84%">连接用户：5 行 <small>匿名事件无法连接 auth_user</small></div>
-        <div class="funnel-step" style="width: 68%">普通用户：4 行 <small>排除 U4 staff</small></div>
-        <div class="funnel-step" style="width: 34%">有效事件：1 行 <small>只剩 U1 的 page_view</small></div>
-        <div class="funnel-step" style="width: 34%">独立活跃用户：1 人 <small>DAU = 1</small></div>
-      </div>
+    <div class="callout">
+      阅读这张图时，可以沿着任意一条记录横向追踪：E5 在连接阶段消失，E6 在普通用户过滤阶段消失，E1/E3/E4 在有效事件过滤阶段消失，E2 最终转换为用户 U1，DAU 为 1。
     </div>
 
     <div class="callout warning">
