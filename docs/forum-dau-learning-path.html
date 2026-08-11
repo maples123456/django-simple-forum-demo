@@ -440,8 +440,64 @@
           'post_like'
       )
 )
-SELECT COUNT(*) AS dau
+    SELECT COUNT(*) AS dau
 FROM eligible_events;</code></pre>
+    <h4>SQL 1 的表变化：为什么要连接用户表</h4>
+    <p>
+      先假设目标日期内有 6 条事件，以及 4 个登录用户。事件表只有
+      <code>user_id</code>，用户是否为 staff 要到 <code>auth_user</code> 中判断。
+    </p>
+    <table>
+      <thead><tr><th>事件 ID</th><th>user_id</th><th>event_name</th><th>身份状态</th></tr></thead>
+      <tbody>
+        <tr><td>E1</td><td>U1</td><td>login</td><td>普通用户</td></tr>
+        <tr><td>E2</td><td>U1</td><td>page_view</td><td>普通用户</td></tr>
+        <tr><td>E3</td><td>U2</td><td>sign_up</td><td>普通用户</td></tr>
+        <tr><td>E4</td><td>U3</td><td>post_unlike</td><td>普通用户</td></tr>
+        <tr><td>E5</td><td>NULL</td><td>page_view</td><td>匿名用户</td></tr>
+        <tr><td>E6</td><td>U4</td><td>post_view</td><td>staff</td></tr>
+      </tbody>
+    </table>
+    <p>用户表中保存的是身份属性：</p>
+    <table>
+      <thead><tr><th>auth_user.id</th><th>is_staff</th><th>is_superuser</th></tr></thead>
+      <tbody>
+        <tr><td>U1</td><td>FALSE</td><td>FALSE</td></tr>
+        <tr><td>U2</td><td>FALSE</td><td>FALSE</td></tr>
+        <tr><td>U3</td><td>FALSE</td><td>FALSE</td></tr>
+        <tr><td>U4</td><td>TRUE</td><td>FALSE</td></tr>
+      </tbody>
+    </table>
+    <p>执行内连接，但暂时不加 staff 条件：</p>
+    <pre><code>SELECT e.event_id, e.user_id, e.event_name,
+       u.is_staff, u.is_superuser
+FROM analytics_analyticsevent AS e
+JOIN auth_user AS u ON u.id = e.user_id
+WHERE e.occurred_at &gt;= :day_start_utc
+  AND e.occurred_at &lt;  :next_day_start_utc;</code></pre>
+    <p>连接后的变化：</p>
+    <table>
+      <thead><tr><th>阶段</th><th>保留事件</th><th>被排除事件</th><th>行数</th></tr></thead>
+      <tbody>
+        <tr><td>原始事件</td><td>E1、E2、E3、E4、E5、E6</td><td>无</td><td>6</td></tr>
+        <tr><td>INNER JOIN auth_user</td><td>E1、E2、E3、E4、E6</td><td>E5：user_id 为 NULL，无法连接用户</td><td>5</td></tr>
+        <tr><td>加普通用户条件</td><td>E1、E2、E3、E4</td><td>E6：U4 是 staff</td><td>4</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warning">
+      这里要区分两件事：<code>JOIN</code> 负责把事件和用户属性拼接起来；
+      <code>u.is_staff = FALSE</code>、<code>u.is_superuser = FALSE</code> 才负责排除管理员。
+      如果只写 JOIN、不写用户条件，staff 的事件仍然会保留。
+    </div>
+    <p>再加上有效事件筛选：</p>
+    <table>
+      <thead><tr><th>阶段</th><th>保留事件</th><th>排除原因</th><th>去重用户</th></tr></thead>
+      <tbody>
+        <tr><td>普通用户事件</td><td>E1、E2、E3、E4</td><td>无</td><td>U1、U2、U3</td></tr>
+        <tr><td>event_name IN 有效事件</td><td>E2：U1 的 page_view</td><td>E1 login、E3 sign_up、E4 post_unlike 不属于有效事件</td><td>U1</td></tr>
+        <tr><td>DISTINCT user_id</td><td>E2</td><td>同一用户多条有效事件只留一行</td><td>U1</td></tr>
+      </tbody>
+    </table>
     <p>
       这条 SQL 的粒度变化是“事件行 → 合格用户集合 → 一个 DAU 数字”。
       <code>DISTINCT e.user_id</code> 负责当天去重，<code>COUNT(*)</code> 只是在去重后的集合上计数，
