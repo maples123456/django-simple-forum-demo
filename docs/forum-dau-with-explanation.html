@@ -240,41 +240,79 @@ FROM eligible_users;</code></pre>
 
   <section>
     <h2>三、连接和过滤后，表是怎样变化的</h2>
-    <p>把每个 SQL 条件作为一列，所有原始记录都保留在同一张对账表中：</p>
+    <p>下面严格按阶段展示，每个阶段都是一张真实的业务明细表。</p>
+
+    <h3>阶段 0：原始事件表</h3>
+    <p>粒度：一行一个事件。此时还没有连接用户属性，也没有判断是否活跃。</p>
     <table class="data-table">
-      <thead>
-        <tr>
-          <th>event_id</th>
-          <th>user_id</th>
-          <th>event_name</th>
-          <th>原始身份</th>
-          <th>JOIN auth_user</th>
-          <th>普通用户过滤</th>
-          <th>有效事件过滤</th>
-          <th>用户去重结果</th>
-        </tr>
-      </thead>
+      <thead><tr><th>event_id</th><th>user_id</th><th>event_name</th><th>匿名标识状态</th><th>当前阶段</th></tr></thead>
       <tbody>
-        <tr><td>E1</td><td>U1</td><td>login</td><td>普通用户</td><td class="keep">已连接</td><td class="keep">保留</td><td class="drop">排除：login</td><td class="neutral">不进入</td></tr>
-        <tr><td>E2</td><td>U1</td><td>page_view</td><td>普通用户</td><td class="keep">已连接</td><td class="keep">保留</td><td class="keep">保留：有效事件</td><td class="keep">U1，DAU +1</td></tr>
-        <tr><td>E3</td><td>U2</td><td>sign_up</td><td>普通用户</td><td class="keep">已连接</td><td class="keep">保留</td><td class="drop">排除：sign_up</td><td class="neutral">不进入</td></tr>
-        <tr><td>E4</td><td>U3</td><td>post_unlike</td><td>普通用户</td><td class="keep">已连接</td><td class="keep">保留</td><td class="drop">排除：当前口径不计入</td><td class="neutral">不进入</td></tr>
-        <tr><td>E5</td><td>NULL</td><td>page_view</td><td>匿名用户</td><td class="drop">无匹配用户</td><td class="neutral">不适用</td><td class="neutral">不适用</td><td class="neutral">不进入</td></tr>
-        <tr><td>E6</td><td>U4</td><td>post_view</td><td>staff</td><td class="keep">已连接</td><td class="drop">排除：is_staff=TRUE</td><td class="neutral">不适用</td><td class="neutral">不进入</td></tr>
+        <tr><td>E1</td><td>U1</td><td>login</td><td>已登录</td><td>原始记录</td></tr>
+        <tr><td>E2</td><td>U1</td><td>page_view</td><td>已登录</td><td>原始记录</td></tr>
+        <tr><td>E3</td><td>U2</td><td>sign_up</td><td>已登录</td><td>原始记录</td></tr>
+        <tr><td>E4</td><td>U3</td><td>post_unlike</td><td>已登录</td><td>原始记录</td></tr>
+        <tr><td>E5</td><td>NULL</td><td>page_view</td><td>匿名</td><td>原始记录</td></tr>
+        <tr><td>E6</td><td>U4</td><td>post_view</td><td>已登录</td><td>原始记录</td></tr>
       </tbody>
     </table>
 
-    <p>最后把有效事件表转换成用户粒度表：</p>
+    <h3>阶段 1：连接 <code>auth_user</code></h3>
+    <p>粒度仍然是一行一个事件，但增加了用户属性。E5 因为 <code>user_id</code> 为 NULL，没有进入 INNER JOIN 的输出。</p>
     <table class="data-table">
-      <thead><tr><th>user_id</th><th>来源 event_id</th><th>有效行为</th><th>用户日粒度</th><th>DAU 贡献</th></tr></thead>
+      <thead><tr><th>event_id</th><th>user_id</th><th>event_name</th><th>is_staff</th><th>is_superuser</th><th>JOIN 结果</th></tr></thead>
       <tbody>
-        <tr><td>U1</td><td>E2</td><td>page_view</td><td>2026-08-10 × 1 行</td><td class="keep">+1</td></tr>
+        <tr><td>E1</td><td>U1</td><td>login</td><td>FALSE</td><td>FALSE</td><td class="keep">已连接</td></tr>
+        <tr><td>E2</td><td>U1</td><td>page_view</td><td>FALSE</td><td>FALSE</td><td class="keep">已连接</td></tr>
+        <tr><td>E3</td><td>U2</td><td>sign_up</td><td>FALSE</td><td>FALSE</td><td class="keep">已连接</td></tr>
+        <tr><td>E4</td><td>U3</td><td>post_unlike</td><td>FALSE</td><td>FALSE</td><td class="keep">已连接</td></tr>
+        <tr><td>E6</td><td>U4</td><td>post_view</td><td>TRUE</td><td>FALSE</td><td class="keep">已连接</td></tr>
       </tbody>
+    </table>
+    <table class="data-table">
+      <thead><tr><th>未进入阶段 1 的 event_id</th><th>user_id</th><th>event_name</th><th>原因</th></tr></thead>
+      <tbody><tr><td>E5</td><td>NULL</td><td>page_view</td><td class="drop">没有对应 auth_user，INNER JOIN 无法匹配</td></tr></tbody>
+    </table>
+
+    <h3>阶段 2：普通用户过滤表</h3>
+    <p>粒度仍是一行一个事件。此时执行 <code>is_staff = FALSE AND is_superuser = FALSE</code>。</p>
+    <table class="data-table">
+      <thead><tr><th>event_id</th><th>user_id</th><th>event_name</th><th>is_staff</th><th>is_superuser</th><th>过滤结果</th></tr></thead>
+      <tbody>
+        <tr><td>E1</td><td>U1</td><td>login</td><td>FALSE</td><td>FALSE</td><td class="keep">保留</td></tr>
+        <tr><td>E2</td><td>U1</td><td>page_view</td><td>FALSE</td><td>FALSE</td><td class="keep">保留</td></tr>
+        <tr><td>E3</td><td>U2</td><td>sign_up</td><td>FALSE</td><td>FALSE</td><td class="keep">保留</td></tr>
+        <tr><td>E4</td><td>U3</td><td>post_unlike</td><td>FALSE</td><td>FALSE</td><td class="keep">保留</td></tr>
+      </tbody>
+    </table>
+    <table class="data-table">
+      <thead><tr><th>未进入阶段 2 的 event_id</th><th>user_id</th><th>event_name</th><th>原因</th></tr></thead>
+      <tbody><tr><td>E6</td><td>U4</td><td>post_view</td><td class="drop">is_staff = TRUE，排除 staff</td></tr></tbody>
+    </table>
+
+    <h3>阶段 3：有效事件表</h3>
+    <p>粒度仍是一行一个事件。只保留 <code>EFFECTIVE_EVENTS</code> 中定义的行为。</p>
+    <table class="data-table">
+      <thead><tr><th>event_id</th><th>user_id</th><th>event_name</th><th>是否有效事件</th><th>进入合格事件 CTE</th></tr></thead>
+      <tbody><tr><td>E2</td><td>U1</td><td>page_view</td><td class="keep">是</td><td class="keep">是</td></tr></tbody>
+    </table>
+    <table class="data-table">
+      <thead><tr><th>被排除 event_id</th><th>user_id</th><th>event_name</th><th>排除原因</th></tr></thead>
+      <tbody>
+        <tr><td>E1</td><td>U1</td><td>login</td><td class="drop">登录不是当前有效活跃事件</td></tr>
+        <tr><td>E3</td><td>U2</td><td>sign_up</td><td class="drop">注册不是当前有效活跃事件</td></tr>
+        <tr><td>E4</td><td>U3</td><td>post_unlike</td><td class="drop">取消点赞不在当前有效事件列表</td></tr>
+      </tbody>
+    </table>
+
+    <h3>阶段 4：用户日粒度表</h3>
+    <p>此时从事件粒度转换为用户粒度，使用 <code>DISTINCT user_id</code>。每个用户每天最多一行。</p>
+    <table class="data-table">
+      <thead><tr><th>activity_date</th><th>user_id</th><th>来源 event_id</th><th>有效事件数</th><th>用户日状态</th><th>DAU 贡献</th></tr></thead>
+      <tbody><tr><td>2026-08-10</td><td>U1</td><td>E2</td><td>1</td><td class="keep">有效活跃用户</td><td class="keep">1</td></tr></tbody>
     </table>
 
     <div class="callout">
-      这张表的每一列对应一个真实处理条件：<code>JOIN</code> 看用户是否存在，普通用户过滤看账号资格，
-      有效事件过滤看行为是否计入，用户去重结果看最终是否进入 DAU。E2 是唯一一行穿过全部条件的记录。
+      这样可以逐阶段追踪：E5 在阶段 1 消失，E6 在阶段 2 消失，E1、E3、E4 在阶段 3 消失，E2 在阶段 4 转换成 U1 的用户日记录，最终 DAU = 1。
     </div>
 
     <div class="callout warning">
