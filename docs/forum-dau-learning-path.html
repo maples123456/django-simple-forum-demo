@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>论坛 DAU 最小学习路径</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #667085;
+      --border: #dce3ed;
+      --primary: #3157d5;
+      --primary-soft: #eef2ff;
+      --green: #18794e;
+      --green-soft: #eaf7ef;
+      --orange: #a15c00;
+      --orange-soft: #fff4df;
+      --red: #b42318;
+      --red-soft: #fff0ee;
+      --code: #111827;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.7;
+    }
+
+    main {
+      width: min(1100px, calc(100% - 32px));
+      margin: 40px auto;
+    }
+
+    header,
+    section {
+      margin-bottom: 24px;
+      padding: 28px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: 0 8px 28px rgb(16 24 40 / 5%);
+    }
+
+    header {
+      color: white;
+      border: 0;
+      background:
+        linear-gradient(135deg, #172554, #3157d5 60%, #5478e8);
+    }
+
+    header p {
+      max-width: 760px;
+      color: #e7ebff;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin-top: 0;
+      line-height: 1.3;
+    }
+
+    h1 {
+      margin-bottom: 12px;
+      font-size: clamp(30px, 5vw, 48px);
+    }
+
+    h2 {
+      margin-bottom: 18px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 25px;
+    }
+
+    h3 {
+      margin-top: 24px;
+      margin-bottom: 10px;
+      font-size: 19px;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    code {
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: #eef1f6;
+      color: #263a75;
+      font-family: "SFMono-Regular", Consolas, monospace;
+    }
+
+    pre {
+      overflow-x: auto;
+      padding: 18px;
+      border-radius: 10px;
+      background: var(--code);
+      color: #f8fafc;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      line-height: 1.6;
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      margin: 16px 0;
+      border-collapse: collapse;
+      font-size: 15px;
+    }
+
+    th,
+    td {
+      padding: 11px 13px;
+      border: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f7f9fc;
+      font-weight: 650;
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 16px 18px;
+      border-left: 5px solid var(--primary);
+      border-radius: 8px;
+      background: var(--primary-soft);
+    }
+
+    .success {
+      border-left-color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .warning {
+      border-left-color: var(--orange);
+      background: var(--orange-soft);
+    }
+
+    .danger {
+      border-left-color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(100px, 1fr));
+      gap: 8px;
+      align-items: center;
+      margin: 22px 0;
+    }
+
+    .flow-item {
+      padding: 14px 10px;
+      border: 1px solid #cbd5ff;
+      border-radius: 10px;
+      background: var(--primary-soft);
+      text-align: center;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .arrow {
+      color: var(--primary);
+      text-align: center;
+      font-size: 22px;
+    }
+
+    .tag {
+      display: inline-block;
+      margin: 2px 4px 2px 0;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 13px;
+    }
+
+    .checklist li {
+      margin-bottom: 8px;
+    }
+
+    @media (max-width: 760px) {
+      main {
+        width: min(100% - 20px, 1100px);
+        margin: 16px auto;
+      }
+
+      header,
+      section {
+        padding: 20px;
+      }
+
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .arrow {
+        transform: rotate(90deg);
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<main>
+  <header>
+    <span class="tag">django-simple-forum-demo</span>
+    <span class="tag">单指标闭环</span>
+    <h1>论坛 DAU 最小学习路径</h1>
+    <p>
+      通过一个指标，跑通业务定义、原始事件、用户日中间表、
+      产品日汇总、数据验证、报表可视化和业务解释。
+    </p>
+  </header>
+
+  <section>
+    <h2>1. 学习范围</h2>
+
+    <div class="callout success">
+      <strong>本阶段只学习一个指标：登录普通用户 DAU。</strong>
+      暂时不学习 WAU、MAU、留存、漏斗、用户分层和板块分析。
+    </div>
+
+    <div class="flow">
+      <div class="flow-item">业务定义</div>
+      <div class="arrow">→</div>
+      <div class="flow-item">原始事件</div>
+      <div class="arrow">→</div>
+      <div class="flow-item">用户日</div>
+      <div class="arrow">→</div>
+      <div class="flow-item">产品日</div>
+    </div>
+
+    <div class="flow">
+      <div class="flow-item">数据验证</div>
+      <div class="arrow">→</div>
+      <div class="flow-item">DAU 趋势图</div>
+      <div class="arrow">→</div>
+      <div class="flow-item">业务解释</div>
+      <div class="arrow">→</div>
+      <div class="flow-item">完成闭环</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. DAU 的业务定义</h2>
+
+    <p>开始写 SQL 前，必须先回答以下问题：</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>口径项目</th>
+          <th>需要确定的问题</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>用户范围</td><td>统计登录用户还是全部访客？</td></tr>
+        <tr><td>有效行为</td><td>登录、注册、浏览、发帖、回复、点赞中，哪些代表活跃？</td></tr>
+        <tr><td>内部账号</td><td>staff 和 superuser 是否排除？</td></tr>
+        <tr><td>时间范围</td><td>使用哪个时区？一天的边界是什么？</td></tr>
+        <tr><td>去重标识</td><td>按 user_id 还是 anonymous_id 去重？</td></tr>
+        <tr><td>数据完整性</td><td>今天是否已经结束？数据是否已经收齐？</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      当前项目的口径可以描述为：
+      按 Asia/Shanghai 自然日统计，当天至少产生一次有效论坛行为的
+      非 staff、非 superuser 登录用户数，同一用户一天只计算一次。
+    </div>
+  </section>
+
+  <section>
+    <h2>3. 必要的数据表和字段</h2>
+
+    <h3>3.1 事件表：analytics_analyticsevent</h3>
+    <table>
+      <thead><tr><th>字段</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>event_id</td><td>事件唯一标识</td></tr>
+        <tr><td>event_name</td><td>行为类型</td></tr>
+        <tr><td>occurred_at</td><td>行为发生时间</td></tr>
+        <tr><td>user_id</td><td>登录用户标识</td></tr>
+        <tr><td>anonymous_id</td><td>匿名访问者标识</td></tr>
+        <tr><td>session_id</td><td>会话标识</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.2 用户表：auth_user</h3>
+    <table>
+      <thead><tr><th>字段</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>用户唯一标识</td></tr>
+        <tr><td>is_staff</td><td>是否为后台工作人员</td></tr>
+        <tr><td>is_superuser</td><td>是否为超级管理员</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.3 用户日表：analytics_useractivitydaily</h3>
+    <table>
+      <thead><tr><th>字段</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>activity_date</td><td>用户行为日期</td></tr>
+        <tr><td>user_id</td><td>用户标识</td></tr>
+        <tr><td>page_view_count</td><td>页面浏览数</td></tr>
+        <tr><td>board_view_count</td><td>板块浏览数</td></tr>
+        <tr><td>post_view_count</td><td>帖子浏览数</td></tr>
+        <tr><td>post_count</td><td>发帖数</td></tr>
+        <tr><td>reply_count</td><td>回复数</td></tr>
+        <tr><td>like_count</td><td>点赞数</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.4 产品日表：analytics_productmetricsdaily</h3>
+    <table>
+      <thead><tr><th>字段</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td>metric_date</td><td>指标日期，一天一行</td></tr>
+        <tr><td>dau</td><td>预先计算好的登录普通用户 DAU</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>4. 同一个 DAU 的三条主要查询路径</h2>
+
+    <h3>路径 A：从原始事件直接查询</h3>
+    <pre><code>AnalyticsEvent
+      + User
+      ↓
+  过滤目标日期
+      ↓
+  排除匿名用户和管理员
+      ↓
+  保留有效事件
+      ↓
+  按 user_id 去重
+      ↓
+  得到 DAU</code></pre>
+    <table>
+      <tbody>
+        <tr><th>优势</th><td>最灵活、最接近原始事实、适合核验和临时分析</td></tr>
+        <tr><th>劣势</th><td>数据量大，查询逻辑复杂，重复编写容易产生口径差异</td></tr>
+        <tr><th>适合场景</th><td>开发指标、排查错误、修改口径、抽样核验</td></tr>
+        <tr><th>扫描粒度</th><td>事件级，通常数据量最大</td></tr>
+      </tbody>
+    </table>
+
+    <h3>路径 B：从用户日中间表查询</h3>
+    <pre><code>UserActivityDaily
+      ↓
+  筛选 activity_date
+      ↓
+  判断有效行为字段之和是否大于 0
+      ↓
+  按用户计数
+      ↓
+  得到 DAU</code></pre>
+    <div class="callout warning">
+      不能直接统计 UserActivityDaily 的行数。
+      当天注册但没有任何有效行为的新用户，也可能存在于用户日表中。
+    </div>
+    <table>
+      <tbody>
+        <tr><th>优势</th><td>数据量比事件表小，用户行为已经按天汇总，适合用户分析</td></tr>
+        <tr><th>劣势</th><td>依赖中间表及时生成；不能查看单条事件细节</td></tr>
+        <tr><th>适合场景</th><td>用户分层、用户日分析、复核日指标</td></tr>
+        <tr><th>扫描粒度</th><td>用户日级，通常小于事件级</td></tr>
+      </tbody>
+    </table>
+
+    <h3>路径 C：从产品日指标表查询</h3>
+    <pre><code>ProductMetricsDaily
+      ↓
+  筛选 metric_date
+      ↓
+  读取 dau
+      ↓
+  得到报表结果</code></pre>
+    <table>
+      <tbody>
+        <tr><th>优势</th><td>速度最快、口径稳定、报表使用简单</td></tr>
+        <tr><th>劣势</th><td>灵活性最低；如果上游没有刷新，读取的是旧结果</td></tr>
+        <tr><th>适合场景</th><td>管理员看板、固定日报、DAU趋势图</td></tr>
+        <tr><th>扫描粒度</th><td>日期级，一天通常只有一行</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>5. 三条路径为什么效率不同</h2>
+    <p>假设一天有以下数据量：</p>
+    <table>
+      <thead><tr><th>数据层</th><th>大约行数</th><th>查询工作</th></tr></thead>
+      <tbody>
+        <tr><td>事件明细</td><td>1,000,000 行</td><td>过滤、连接、事件判断、用户去重</td></tr>
+        <tr><td>用户日</td><td>100,000 行</td><td>过滤日期、判断行为、用户计数</td></tr>
+        <tr><td>产品日</td><td>1 行</td><td>读取 dau 字段</td></tr>
+      </tbody>
+    </table>
+    <p>查询路径的计算量大致表现为：</p>
+    <pre><code>原始事件查询
+  需要处理大量事件和 COUNT(DISTINCT user_id)
+
+用户日查询
+  事件已经提前压缩成一名用户一天一行
+
+产品日查询
+  DAU 已经提前算好，只需读取一行</code></pre>
+    <div class="callout">
+      预聚合并没有让计算消失，而是把计算从“每次打开报表时”
+      移动到了“每天生成指标时”。
+    </div>
+    <table>
+      <thead><tr><th>比较项</th><th>事件表</th><th>用户日表</th><th>产品日表</th></tr></thead>
+      <tbody>
+        <tr><td>查询速度</td><td>相对较慢</td><td>中等</td><td>最快</td></tr>
+        <tr><td>灵活性</td><td>最高</td><td>中等</td><td>最低</td></tr>
+        <tr><td>数据细节</td><td>完整</td><td>部分丢失</td><td>只保留结果</td></tr>
+        <tr><td>实时性</td><td>通常最高</td><td>依赖生成时间</td><td>依赖生成时间</td></tr>
+        <tr><td>口径一致性</td><td>依赖查询人员</td><td>较稳定</td><td>最稳定</td></tr>
+        <tr><td>适合报表</td><td>不优先</td><td>可用</td><td>最适合</td></tr>
+        <tr><td>适合排错</td><td>最适合</td><td>适合</td><td>不适合</td></tr>
+      </tbody>
+    </table>
+    <p>
+      实际速度还会受到索引、数据规模、数据库类型、缓存和查询计划影响，
+      不能简单认为所有中间表查询一定更快。但在口径相同、设计合理的情况下，
+      预聚合表通常需要处理的行数更少。
+    </p>
+  </section>
+
+  <section>
+    <h2>6. “业务查询”和“数据分析查询”是否不同</h2>
+    <div class="callout success">
+      这个说法部分准确。真正需要区分的是：
+      查询目标不同，还是同一目标的查询路径不同。
+    </div>
+
+    <h3>情况一：指标名称相同，但业务定义不同</h3>
+    <p>业务人员可能说：</p>
+    <blockquote>我只关心真正参与论坛的活跃用户。</blockquote>
+    <p>他可能把活跃定义为：</p>
+    <pre><code>post_create
+reply_create
+post_like</code></pre>
+    <p>分析人员为了衡量产品使用规模，可能把活跃定义为：</p>
+    <pre><code>page_view
+board_view
+post_view
+post_create
+reply_create
+post_like</code></pre>
+    <p>模拟用户：</p>
+    <table>
+      <thead><tr><th>用户</th><th>当天行为</th><th>广义使用 DAU</th><th>核心互动 DAU</th></tr></thead>
+      <tbody>
+        <tr><td>U1</td><td>page_view</td><td>计入</td><td>不计入</td></tr>
+        <tr><td>U2</td><td>post_view</td><td>计入</td><td>不计入</td></tr>
+        <tr><td>U3</td><td>reply_create</td><td>计入</td><td>计入</td></tr>
+        <tr><td>U4</td><td>post_like</td><td>计入</td><td>计入</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>指标</th><th>结果</th></tr></thead>
+      <tbody>
+        <tr><td>广义使用 DAU</td><td>4</td></tr>
+        <tr><td>核心互动 DAU</td><td>2</td></tr>
+      </tbody>
+    </table>
+    <p>
+      这不是查询效率造成的差异，而是指标定义不同。
+      严格来说，它们不应该使用完全相同的名称。
+    </p>
+    <table>
+      <thead><tr><th>建议名称</th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td>登录用户 DAU</td><td>产生任意有效论坛行为的登录用户</td></tr>
+        <tr><td>内容互动 DAU</td><td>发帖、回复或点赞的用户</td></tr>
+        <tr><td>创作者 DAU</td><td>当天发帖的用户</td></tr>
+      </tbody>
+    </table>
+
+    <h3>情况二：指标定义完全相同，但查询路径不同</h3>
+    <p>如果三条路径都使用完全相同的定义：</p>
+    <pre><code>相同用户范围
+  + 相同有效事件
+  + 相同时区
+  + 相同日期
+  + 相同去重方式</code></pre>
+    <p>那么结果应该一致：</p>
+    <table>
+      <thead><tr><th>查询路径</th><th>预期 DAU</th></tr></thead>
+      <tbody>
+        <tr><td>事件表直接计算</td><td>100</td></tr>
+        <tr><td>用户日表计算</td><td>100</td></tr>
+        <tr><td>产品日表读取</td><td>100</td></tr>
+      </tbody>
+    </table>
+    <p>如果结果不同，应优先检查：</p>
+    <ul class="checklist">
+      <li>中间表是否已经刷新；</li>
+      <li>是否包含未完整日期；</li>
+      <li>有效事件列表是否一致；</li>
+      <li>管理员过滤是否一致；</li>
+      <li>时间边界和时区是否一致；</li>
+      <li>用户日表是否错误地统计了零行为新增用户；</li>
+      <li>是否发生迟到数据或重复事件。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>7. 业务表能不能直接计算 DAU</h2>
+    <p>论坛业务表包括：</p>
+    <pre><code>forum_post
+forum_reply
+forum_post_likes</code></pre>
+    <p>这些表可以找到发帖、回复和当前点赞关系，但不能完整表示页面浏览。</p>
+    <table>
+      <thead><tr><th>用户</th><th>行为</th><th>事件表能看到</th><th>业务表能看到</th></tr></thead>
+      <tbody>
+        <tr><td>U1</td><td>浏览帖子</td><td>是</td><td>否</td></tr>
+        <tr><td>U2</td><td>发布帖子</td><td>是</td><td>是</td></tr>
+        <tr><td>U3</td><td>回复帖子</td><td>是</td><td>是</td></tr>
+        <tr><td>U4</td><td>点赞后取消</td><td>能看到行为过程</td><td>只看到最终状态</td></tr>
+      </tbody>
+    </table>
+    <p>所以从业务表查询得到的可能是：</p>
+    <pre><code>发帖或回复用户数
+核心贡献用户数
+创作者用户数</code></pre>
+    <p>它不能自动等同于包含浏览行为的论坛 DAU。</p>
+    <div class="callout warning">
+      从不同数据源得到不同结果，不一定是查询错误。
+      先判断数据源是否记录了相同的业务事实。
+    </div>
+  </section>
+
+  <section>
+    <h2>8. 查询路径选择规则</h2>
+    <table>
+      <thead><tr><th>工作任务</th><th>优先路径</th><th>原因</th></tr></thead>
+      <tbody>
+        <tr><td>开发新的 DAU 口径</td><td>原始事件表</td><td>需要最大灵活性和事件细节</td></tr>
+        <tr><td>核验某个用户为什么被计入</td><td>原始事件表</td><td>可以查看具体事件</td></tr>
+        <tr><td>按用户行为做分析</td><td>用户日表</td><td>用户已经按天汇总</td></tr>
+        <tr><td>验证中间表是否正确</td><td>事件表与用户日表对账</td><td>两条路径应得到相同结果</td></tr>
+        <tr><td>加载固定 DAU 趋势图</td><td>产品日表</td><td>查询简单、快速、口径稳定</td></tr>
+        <tr><td>统计实际新增帖子</td><td>论坛业务表</td><td>业务表是帖子事实的直接来源</td></tr>
+      </tbody>
+    </table>
+    <pre><code>需要事件细节或改变口径？
+      ├── 是 → 查询 AnalyticsEvent
+      └── 否
+           ↓
+  需要用户级行为？
+      ├── 是 → 查询 UserActivityDaily
+      └── 否
+           ↓
+  只需要固定日报结果？
+      └── 是 → 查询 ProductMetricsDaily</code></pre>
+  </section>
+
+  <section>
+    <h2>9. 最小实践流程</h2>
+    <table>
+      <thead><tr><th>阶段</th><th>你的任务</th><th>完成标准</th></tr></thead>
+      <tbody>
+        <tr><td>1. 指标定义</td><td>独立确定用户、行为、时间和排除范围</td><td>定义没有明显歧义</td></tr>
+        <tr><td>2. 手工计算</td><td>从少量事件中算出 DAU</td><td>能够展示过滤和去重过程</td></tr>
+        <tr><td>3. 事件 SQL</td><td>从事件表计算 DAU</td><td>不把事件次数当用户数</td></tr>
+        <tr><td>4. 用户日 SQL</td><td>生成一名用户一天一行的中间结果</td><td>理解唯一键和零行为用户</td></tr>
+        <tr><td>5. 产品日 SQL</td><td>生成一天一行的 DAU</td><td>和事件层结果一致</td></tr>
+        <tr><td>6. 数据验证</td><td>使用两条路径对账</td><td>能定位结果不一致的原因</td></tr>
+        <tr><td>7. 可视化</td><td>制作一张 DAU 日趋势图</td><td>不展示误导性的未完整日期</td></tr>
+        <tr><td>8. 业务解释</td><td>解释 DAU 变化并提出后续检查</td><td>不把相关性直接解释为原因</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>10. 最终结论</h2>
+    <div class="callout success">
+      <strong>同一个指标可以有多条查询路径，但不能有多个未经说明的定义。</strong>
+    </div>
+    <ul class="checklist">
+      <li>原始事件路径最灵活，适合开发和排错。</li>
+      <li>用户日路径适合用户分析和中间结果复核。</li>
+      <li>产品日路径最快，适合固定报表。</li>
+      <li>业务表适合查询帖子、回复等核心业务事实，但无法覆盖所有浏览行为。</li>
+      <li>如果指标合同完全相同，多条查询路径应该得到一致结果。</li>
+      <li>如果结果不同，先检查口径、刷新时间、数据完整性和聚合逻辑。</li>
+    </ul>
+    <p>
+      真正的工作能力不是只会写一条查询，而是知道什么时候查哪一层、
+      为什么选择这一层，以及如何用另一条路径验证结果。
+    </p>
+  </section>
+</main>
+</body>
+</html>
