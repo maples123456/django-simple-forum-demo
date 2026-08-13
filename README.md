@@ -98,6 +98,7 @@ docker compose up -d postgres
 - [论坛常见指标能力评估手册（Markdown）](docs/forum-metrics-assessment-guide.md)：使用 GFM 表格，适合在 GitHub 和支持 GFM 的编辑器中阅读、修改。
 - [论坛常见指标能力评估手册（PDF）](output/pdf/forum-metrics-assessment-guide.pdf)：固定表格边界、全单元格居中，适合稳定查看和打印，不受 Markdown 渲染器影响。
 - [analytics/services.py 数据转换学习笔记](docs/analytics-services-study-notes.md)：逐步理解事件如何生成用户日和产品日汇总。
+- [论坛数据仓库结构、数据来源与更新](docs/forum-warehouse-architecture-and-refresh.html)：按阶段学习数仓分层、来源盘点、增量更新、迟到数据和重跑。
 
 重新生成 PDF：
 

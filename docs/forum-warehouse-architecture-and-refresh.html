@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>论坛数据仓库：结构设计、数据来源与更新</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #fff;
+      --text: #172033;
+      --muted: #667085;
+      --border: #dce3ed;
+      --primary: #3157d5;
+      --primary-soft: #eef2ff;
+      --green: #18794e;
+      --green-soft: #eaf7ef;
+      --orange: #a15c00;
+      --orange-soft: #fff4df;
+      --red: #b42318;
+      --red-soft: #fff0ee;
+      --code: #111827;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.7;
+    }
+    main { width: min(1160px, calc(100% - 32px)); margin: 36px auto; }
+    header, section {
+      margin-bottom: 24px;
+      padding: 28px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: 0 8px 28px rgb(16 24 40 / 5%);
+    }
+    header {
+      color: #fff;
+      border: 0;
+      background: linear-gradient(135deg, #172554, #3157d5 60%, #5478e8);
+    }
+    header p { max-width: 900px; color: #e7ebff; }
+    h1, h2, h3 { line-height: 1.3; }
+    h1 { margin: 0 0 12px; font-size: clamp(30px, 5vw, 48px); }
+    h2 { margin: 0 0 18px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    h3 { margin-top: 24px; margin-bottom: 10px; }
+    code { padding: 2px 6px; border-radius: 5px; background: #eef1f6; color: #263a75; font-family: "SFMono-Regular", Consolas, monospace; }
+    pre { overflow-x: auto; padding: 18px; border-radius: 10px; background: var(--code); color: #f8fafc; font-family: "SFMono-Regular", Consolas, monospace; line-height: 1.6; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+    table { width: 100%; margin: 16px 0; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 10px 12px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+    th { background: #f7f9fc; font-weight: 650; }
+    .data-table { min-width: 900px; font-size: 13px; }
+    .data-table th { white-space: nowrap; text-align: center; }
+    .data-table td { text-align: center; }
+    .keep { color: var(--green); background: var(--green-soft); font-weight: 650; }
+    .drop { color: var(--orange); background: var(--orange-soft); font-weight: 650; }
+    .callout { margin: 18px 0; padding: 16px 18px; border-left: 5px solid var(--primary); border-radius: 8px; background: var(--primary-soft); }
+    .success { border-left-color: var(--green); background: var(--green-soft); }
+    .warning { border-left-color: var(--orange); background: var(--orange-soft); }
+    .danger { border-left-color: var(--red); background: var(--red-soft); }
+    .tag { display: inline-block; margin-right: 6px; padding: 3px 9px; border-radius: 999px; background: #e4eaff; color: var(--primary); font-size: 13px; }
+    .pipeline { display: grid; grid-template-columns: repeat(7, minmax(110px, 1fr)); gap: 8px; align-items: center; margin: 22px 0; }
+    .node { min-height: 86px; padding: 14px 10px; border: 1px solid #cbd5ff; border-radius: 10px; background: var(--primary-soft); text-align: center; }
+    .node strong { display: block; color: #203b9b; }
+    .node small { color: var(--muted); }
+    .arrow { color: var(--primary); text-align: center; font-size: 24px; }
+    .layer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 18px 0; }
+    .layer-card { padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: #fbfcfe; }
+    .layer-card h3 { margin-top: 0; font-size: 18px; }
+    .layer-code { color: var(--primary); font-family: Consolas, monospace; font-size: 13px; }
+    .checklist li { margin-bottom: 8px; }
+    @media (max-width: 760px) {
+      main { width: min(100% - 20px, 1160px); margin: 16px auto; }
+      header, section { padding: 20px; }
+      .pipeline, .layer-grid { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); }
+      table { display: block; overflow-x: auto; white-space: nowrap; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="tag">django-simple-forum-demo</span>
+    <span class="tag">数据仓库结构</span>
+    <span class="tag">数据来源与更新</span>
+    <h1>论坛数据仓库：结构设计、数据来源与更新</h1>
+    <p>
+      用论坛 DAU、内容互动和留存这些真实业务问题，完整走一遍数据仓库设计：
+      从数据源盘点，到分层建表，再到增量更新、重跑、迟到数据和看板服务。
+    </p>
+  </header>
+
+  <section>
+    <h2>一、先从业务问题开始，而不是先画表</h2>
+    <div class="callout success">
+      数据仓库不是把所有数据复制几份，而是把稳定、重复、昂贵、需要复核的业务计算沉淀到合适的粒度。
+    </div>
+    <table>
+      <thead><tr><th>业务问题</th><th>需要的事实</th><th>需要的维度</th><th>最终结果粒度</th></tr></thead>
+      <tbody>
+        <tr><td>今天有多少登录普通用户活跃？</td><td>浏览、发帖、回复、点赞事件</td><td>用户身份和管理员状态</td><td>日期</td></tr>
+        <tr><td>用户每天做了什么？</td><td>有效事件</td><td>用户、新用户标记</td><td>日期 × 用户</td></tr>
+        <tr><td>哪个板块活跃下降？</td><td>带 board_id 的事件</td><td>板块名称和状态</td><td>日期 × 板块</td></tr>
+        <tr><td>新用户 D1/D7 是否回来？</td><td>注册日期和后续有效事件</td><td>用户身份</td><td>注册 Cohort × 留存日</td></tr>
+        <tr><td>为什么某帖子没有回应？</td><td>帖子创建和回复事件</td><td>帖子、作者、板块</td><td>帖子</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warning">
+      如果还不能写清楚“业务问题、分子、分母、时间窗口、去重键和一行代表什么”，先不要急着建汇总表。
+    </div>
+  </section>
+
+  <section>
+    <h2>二、论坛项目的数据来源</h2>
+    <p>当前项目有两类主要来源：业务数据库事实和分析事件事实。</p>
+    <table class="data-table">
+      <thead><tr><th>来源系统</th><th>实际表</th><th>主要字段</th><th>记录什么</th><th>更新特征</th></tr></thead>
+      <tbody>
+        <tr><td>Django 用户系统</td><td><code>auth_user</code></td><td>id、date_joined、is_staff、is_superuser</td><td>用户身份和注册信息</td><td>新增、属性修改</td></tr>
+        <tr><td>论坛业务库</td><td><code>forum_board</code></td><td>id、name、created_at</td><td>板块实体</td><td>低频新增和修改</td></tr>
+        <tr><td>论坛业务库</td><td><code>forum_post</code></td><td>id、board_id、author_id、created_at、updated_at</td><td>帖子事实和帖子实体</td><td>新增、编辑</td></tr>
+        <tr><td>论坛业务库</td><td><code>forum_reply</code></td><td>id、post_id、author_id、created_at</td><td>回复事实</td><td>通常只新增</td></tr>
+        <tr><td>React / Django 埋点</td><td><code>analytics_analyticsevent</code></td><td>event_id、event_name、occurred_at、user_id、anonymous_id、session_id、board_id、post_id</td><td>浏览、登录、发帖、回复、点赞等行为</td><td>追加写入，可能迟到或重复</td></tr>
+        <tr><td>业务关系表</td><td><code>forum_post_likes</code></td><td>post_id、user_id</td><td>当前点赞关系</td><td>新增或删除关系</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      事件表记录“发生过什么行为”；业务表记录“当前或最终业务对象是什么”。例如取消点赞事件能从事件表看到过程，
+      但 <code>forum_post_likes</code> 通常只反映当前关系，不能替代行为事实。
+    </div>
+  </section>
+
+  <section>
+    <h2>三、整体结构：从来源到看板</h2>
+    <div class="pipeline" aria-label="论坛数据仓库分层流程">
+      <div class="node"><strong>Source</strong><small>业务库、埋点</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>ODS / Raw</strong><small>原样保存</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>Staging</strong><small>清洗统一</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>Fact / Dim</strong><small>事实和维度</small></div>
+    </div>
+    <div class="pipeline" aria-label="论坛数据仓库指标服务流程">
+      <div class="node"><strong>Fact / Dim</strong><small>可复用基础层</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>Intermediate</strong><small>用户日、帖子日</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>Mart</strong><small>产品日、板块日</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>Dashboard</strong><small>管理员看板</small></div>
+    </div>
+    <div class="layer-grid">
+      <div class="layer-card"><h3>事实层</h3><p class="layer-code">fact_event、fact_post、fact_reply</p><p>保留可计数的业务发生记录，一行代表一个事件或一条业务事实。</p></div>
+      <div class="layer-card"><h3>维度层</h3><p class="layer-code">dim_user、dim_board、dim_post</p><p>保存用于过滤和下钻的实体属性，回答“谁、哪个板块、哪篇帖子”。</p></div>
+      <div class="layer-card"><h3>汇总层</h3><p class="layer-code">user_activity_daily、product_metrics_daily</p><p>把昂贵且稳定的计算提前完成，服务固定报表和用户分析。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>四、阶段 0：定义数据仓库表合同</h2>
+    <p>建表之前，先给候选表写合同。下面以用户日表为例：</p>
+    <table>
+      <thead><tr><th>合同项目</th><th>定义</th><th>为什么必须写</th></tr></thead>
+      <tbody>
+        <tr><td>表名</td><td><code>analytics_useractivitydaily</code></td><td>避免同一个概念出现多张同名表</td></tr>
+        <tr><td>一行代表什么</td><td>一个普通用户在一个自然日的行为汇总</td><td>决定唯一键和聚合逻辑</td></tr>
+        <tr><td>唯一键</td><td><code>activity_date + user_id</code></td><td>防止同一用户同一天重复写入</td></tr>
+        <tr><td>时间口径</td><td>Asia/Shanghai 自然日</td><td>防止日期边界不一致</td></tr>
+        <tr><td>用户范围</td><td>排除匿名、staff、superuser</td><td>确定 DAU 分母和用户集合</td></tr>
+        <tr><td>有效行为</td><td>page_view、board_view、post_view、post_create、reply_create、post_like</td><td>确定什么行为进入统计</td></tr>
+        <tr><td>来源</td><td><code>analytics_analyticsevent</code> + <code>auth_user</code></td><td>形成指标血缘</td></tr>
+        <tr><td>刷新方式</td><td>按日生成，允许指定日期重跑</td><td>处理迟到事件和修复数据</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>五、阶段 1：原始层 / ODS 如何保存数据</h2>
+    <p>原始层尽量保持来源结构和事实粒度，不提前丢掉以后可能需要的字段。</p>
+    <table class="data-table">
+      <thead><tr><th>event_id</th><th>event_name</th><th>occurred_at</th><th>received_at</th><th>user_id</th><th>anonymous_id</th><th>session_id</th><th>source</th></tr></thead>
+      <tbody>
+        <tr><td>E101</td><td>page_view</td><td>08-10 09:00</td><td>08-10 09:00</td><td>U1</td><td>—</td><td>S1</td><td>react</td></tr>
+        <tr><td>E102</td><td>post_view</td><td>08-10 09:01</td><td>08-10 09:01</td><td>U1</td><td>—</td><td>S1</td><td>react</td></tr>
+        <tr><td>E103</td><td>reply_create</td><td>08-10 09:05</td><td>08-10 09:05</td><td>U2</td><td>—</td><td>S2</td><td>django</td></tr>
+        <tr><td>E104</td><td>page_view</td><td>08-10 09:10</td><td>08-10 09:16</td><td>U3</td><td>—</td><td>S3</td><td>react</td></tr>
+        <tr><td>E105</td><td>page_view</td><td>08-10 09:12</td><td>08-10 09:12</td><td>NULL</td><td>A1</td><td>S4</td><td>react</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>原始层原则</th><th>具体做法</th></tr></thead>
+      <tbody>
+        <tr><td>可追溯</td><td>保留 source、received_at、原始 event_id 和 properties</td></tr>
+        <tr><td>追加优先</td><td>事件事实不直接覆盖旧记录</td></tr>
+        <tr><td>可重算</td><td>不要只保存 DAU=2，要能回到事件明细</td></tr>
+        <tr><td>幂等</td><td>以 event_id 或来源主键防止重复写入</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>六、阶段 2：清洗层如何把来源数据变成可分析事实</h2>
+    <p>清洗层不改变业务事实，只统一字段、时间、身份和质量规则。</p>
+    <table class="data-table">
+      <thead><tr><th>event_id</th><th>原始 event_name</th><th>标准 event_name</th><th>用户状态</th><th>是否重复</th><th>是否合格</th><th>排除原因</th></tr></thead>
+      <tbody>
+        <tr><td>E101</td><td>page_view</td><td>page_view</td><td>普通用户</td><td>否</td><td class="keep">是</td><td>—</td></tr>
+        <tr><td>E102</td><td>post_view</td><td>post_view</td><td>普通用户</td><td>否</td><td class="keep">是</td><td>—</td></tr>
+        <tr><td>E103</td><td>reply_create</td><td>reply_create</td><td>普通用户</td><td>否</td><td class="keep">是</td><td>—</td></tr>
+        <tr><td>E104</td><td>page_view</td><td>page_view</td><td>staff</td><td>否</td><td class="drop">否</td><td>内部账号</td></tr>
+        <tr><td>E105</td><td>page_view</td><td>page_view</td><td>匿名</td><td>否</td><td class="drop">否</td><td>当前登录用户指标不包含匿名</td></tr>
+        <tr><td>E102</td><td>post_view</td><td>post_view</td><td>普通用户</td><td>是</td><td class="drop">否</td><td>重复 event_id</td></tr>
+      </tbody>
+    </table>
+    <pre><code>WITH deduplicated_events AS (
+    SELECT *
+    FROM (
+        SELECT
+            e.*,
+            ROW_NUMBER() OVER (
+                PARTITION BY event_id
+                ORDER BY received_at DESC
+            ) AS row_number
+        FROM analytics_analyticsevent AS e
+    ) AS ranked
+    WHERE row_number = 1
+)
+SELECT e.event_id, e.event_name, e.occurred_at, e.user_id
+FROM deduplicated_events AS e
+JOIN auth_user AS u ON u.id = e.user_id
+WHERE u.is_staff = FALSE
+  AND u.is_superuser = FALSE;</code></pre>
+  </section>
+
+  <section>
+    <h2>七、阶段 3：事实表和维度表如何建立</h2>
+    <h3>7.1 事实表：保留可计数的业务发生记录</h3>
+    <table class="data-table">
+      <thead><tr><th>fact_event_id</th><th>event_date</th><th>user_key</th><th>board_key</th><th>post_key</th><th>event_name</th><th>session_id</th></tr></thead>
+      <tbody>
+        <tr><td>E101</td><td>2026-08-10</td><td>U1</td><td>B1</td><td>P1</td><td>page_view</td><td>S1</td></tr>
+        <tr><td>E102</td><td>2026-08-10</td><td>U1</td><td>B1</td><td>P1</td><td>post_view</td><td>S1</td></tr>
+        <tr><td>E103</td><td>2026-08-10</td><td>U2</td><td>B1</td><td>P1</td><td>reply_create</td><td>S2</td></tr>
+      </tbody>
+    </table>
+    <h3>7.2 维度表：保存用于解释和下钻的属性</h3>
+    <table class="data-table">
+      <thead><tr><th>user_key</th><th>user_id</th><th>is_staff</th><th>register_date</th><th>board_key</th><th>board_name</th></tr></thead>
+      <tbody>
+        <tr><td>U1</td><td>U1</td><td>FALSE</td><td>2026-08-01</td><td>B1</td><td>技术交流</td></tr>
+        <tr><td>U2</td><td>U2</td><td>FALSE</td><td>2026-08-10</td><td>B1</td><td>技术交流</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warning">
+      事实表回答“发生了多少次”；维度表回答“发生在谁、哪个板块、哪篇帖子上”。
+      如果把所有属性都复制到每条事件中，查询可能方便，但更新和历史管理成本会增加。
+    </div>
+  </section>
+
+  <section>
+    <h2>八、阶段 4：中间表如何从事实粒度转换</h2>
+    <p>以 DAU 为例，先从事件事实转换到用户日粒度：</p>
+    <table class="data-table">
+      <thead><tr><th>activity_date</th><th>user_id</th><th>event_count</th><th>page_views</th><th>post_views</th><th>replies</th><th>is_new_user</th><th>是否进入 DAU</th></tr></thead>
+      <tbody>
+        <tr><td>2026-08-10</td><td>U1</td><td>2</td><td>1</td><td>1</td><td>0</td><td>FALSE</td><td class="keep">是</td></tr>
+        <tr><td>2026-08-10</td><td>U2</td><td>1</td><td>0</td><td>0</td><td>1</td><td>TRUE</td><td class="keep">是</td></tr>
+        <tr><td>2026-08-10</td><td>U3</td><td>0</td><td>0</td><td>0</td><td>0</td><td>TRUE</td><td class="drop">否，保留为激活率分母</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warning">
+      下面的 <code>AT TIME ZONE</code>、<code>FILTER</code> 和 <code>ON CONFLICT</code> 是 PostgreSQL 示例。
+      项目默认也支持 SQLite；在 SQLite 中应由 Django/Python 先完成时区转换和 upsert，或改写为 SQLite 对应语法。
+    </div>
+    <pre><code>INSERT INTO analytics_useractivitydaily (
+    activity_date, user_id, event_count,
+    page_view_count, post_view_count, reply_count
+)
+SELECT
+    CAST(occurred_at AT TIME ZONE 'Asia/Shanghai' AS DATE),
+    user_id,
+    COUNT(*),
+    COUNT(*) FILTER (WHERE event_name = 'page_view'),
+    COUNT(*) FILTER (WHERE event_name = 'post_view'),
+    COUNT(*) FILTER (WHERE event_name = 'reply_create')
+FROM stg_effective_events
+GROUP BY 1, 2
+ON CONFLICT (activity_date, user_id)
+DO UPDATE SET
+    event_count = EXCLUDED.event_count,
+    page_view_count = EXCLUDED.page_view_count,
+    post_view_count = EXCLUDED.post_view_count,
+    reply_count = EXCLUDED.reply_count;</code></pre>
+  </section>
+
+  <section>
+    <h2>九、阶段 5：汇总表如何服务产品看板</h2>
+    <p>用户日表继续汇总为产品日表，报表只需要读取一天一行。</p>
+    <table class="data-table">
+      <thead><tr><th>metric_date</th><th>dau</th><th>new_users</th><th>page_views</th><th>posts_created</th><th>replies_created</th><th>generated_at</th></tr></thead>
+      <tbody>
+        <tr><td>2026-08-10</td><td>2</td><td>2</td><td>1</td><td>0</td><td>1</td><td>2026-08-11 00:15</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>查询方式</th><th>读取行数</th><th>适合场景</th><th>代价</th></tr></thead>
+      <tbody>
+        <tr><td>原始事件直接计算</td><td>事件明细很多行</td><td>开发口径、排错、回溯</td><td>扫描和去重成本高</td></tr>
+        <tr><td>用户日表计算</td><td>用户 × 日期</td><td>用户分层、复核</td><td>依赖中间表刷新</td></tr>
+        <tr><td>产品日表读取</td><td>一天一行</td><td>管理员看板、日报</td><td>灵活性最低</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>十、数据更新：先区分三种时间</h2>
+    <table>
+      <thead><tr><th>时间字段</th><th>含义</th><th>用于什么</th></tr></thead>
+      <tbody>
+        <tr><td><code>occurred_at</code></td><td>用户行为实际发生时间</td><td>指标日期归属</td></tr>
+        <tr><td><code>received_at</code></td><td>系统收到事件的时间</td><td>增量抽取和延迟监控</td></tr>
+        <tr><td><code>generated_at</code></td><td>指标表生成时间</td><td>判断数据是否刷新</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warning">
+      不能只用 received_at 作为业务日期。事件可能 09:10 发生、09:16 才收到；指标应该按 occurred_at 归属，但抽取任务可以按 received_at 找新增数据。
+    </div>
+  </section>
+
+  <section>
+    <h2>十一、数据更新策略</h2>
+    <table>
+      <thead><tr><th>数据对象</th><th>推荐更新方式</th><th>依据字段</th><th>是否允许重跑</th></tr></thead>
+      <tbody>
+        <tr><td>AnalyticsEvent</td><td>追加写入 + event_id 去重</td><td>received_at、event_id</td><td>允许补历史</td></tr>
+        <tr><td>用户维度</td><td>增量 upsert 或每日快照</td><td>id、date_joined、属性更新时间</td><td>允许重建指定日期</td></tr>
+        <tr><td>帖子/回复事实</td><td>按 created_at 增量，按 updated_at 修订帖子</td><td>created_at、updated_at</td><td>允许日期范围重跑</td></tr>
+        <tr><td>UserActivityDaily</td><td>按日期删除后重建，或唯一键 upsert</td><td>activity_date</td><td>必须允许</td></tr>
+        <tr><td>ProductMetricsDaily</td><td>依赖中间层重算后 upsert</td><td>metric_date</td><td>必须允许</td></tr>
+      </tbody>
+    </table>
+
+    <h3>11.1 事件增量抽取</h3>
+    <pre><code>SELECT *
+FROM analytics_analyticsevent
+WHERE received_at &gt; :last_received_at
+  AND received_at &lt;= :current_received_at
+ORDER BY received_at, event_id;</code></pre>
+    <p>不要只使用“上次最大时间”而不保留边界和唯一键。相同时间戳的多条事件需要用复合游标：</p>
+    <pre><code>WHERE (received_at, event_id) &gt; (:last_received_at, :last_event_id)
+ORDER BY received_at, event_id;</code></pre>
+
+    <h3>11.2 更新水位表</h3>
+    <table class="data-table">
+      <thead><tr><th>pipeline_name</th><th>source_table</th><th>last_received_at</th><th>last_event_id</th><th>last_success_at</th><th>status</th></tr></thead>
+      <tbody><tr><td>events_to_staging</td><td>analytics_analyticsevent</td><td>2026-08-11 00:15</td><td>E105</td><td>2026-08-11 00:16</td><td class="keep">success</td></tr></tbody>
+    </table>
+    <p>水位表用于保证下一次任务从正确位置继续，也用于判断任务是否卡住。</p>
+  </section>
+
+  <section>
+    <h2>十二、迟到数据、未完结日期和重跑</h2>
+    <table>
+      <thead><tr><th>问题</th><th>具体表现</th><th>处理方式</th></tr></thead>
+      <tbody>
+        <tr><td>迟到事件</td><td>08-10 发生，08-11 才收到</td><td>按 occurred_at 回写 08-10，重算受影响日期</td></tr>
+        <tr><td>重复事件</td><td>同一 event_id 被上报两次</td><td>唯一键或 ROW_NUMBER 去重</td></tr>
+        <tr><td>当前自然日未结束</td><td>今天上午只收到部分行为</td><td>标记 partial，不作为正式历史结果</td></tr>
+        <tr><td>上游修订</td><td>用户身份或帖子属性改变</td><td>重跑维度和受影响事实/汇总</td></tr>
+        <tr><td>任务失败</td><td>用户日已更新，产品日未更新</td><td>按 run_id 和依赖顺序重跑</td></tr>
+      </tbody>
+    </table>
+    <pre><code>-- 示例：重算完整的 08-10
+BEGIN;
+
+DELETE FROM analytics_useractivitydaily
+WHERE activity_date = DATE '2026-08-10';
+
+-- 重新从 stg_effective_events 生成 08-10 用户日
+-- 再重新生成 ProductMetricsDaily 的 08-10
+
+COMMIT;</code></pre>
+    <div class="callout danger">
+      重跑必须幂等：同一个日期运行一次或运行两次，最终结果都应该相同，不能因为重复运行而重复累加。
+    </div>
+  </section>
+
+  <section>
+    <h2>十三、更新依赖顺序</h2>
+    <div class="pipeline" aria-label="数据仓库更新依赖流程">
+      <div class="node"><strong>源数据到达</strong><small>事件、用户、帖子</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>ODS / Staging</strong><small>抽取、去重、清洗</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>UserActivityDaily</strong><small>用户日重算</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>ProductMetricsDaily</strong><small>看板刷新</small></div>
+    </div>
+    <table>
+      <thead><tr><th>任务</th><th>输入是否完成</th><th>输出</th><th>失败时能否继续下游</th></tr></thead>
+      <tbody>
+        <tr><td>抽取事件</td><td>源表可访问</td><td>原始层新增批次</td><td>否，后续没有新数据</td></tr>
+        <tr><td>清洗事件</td><td>原始批次完成</td><td>合格事件</td><td>否，用户日会不完整</td></tr>
+        <tr><td>生成用户日</td><td>清洗层完成</td><td>用户 × 日期</td><td>否，产品日会错误</td></tr>
+        <tr><td>生成产品日</td><td>用户日完成</td><td>日期指标</td><td>看板应显示上次成功时间</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>十四、如何判断一张候选表值得建立</h2>
+    <table>
+      <thead><tr><th>判断项</th><th>问题</th><th>满足时的倾向</th></tr></thead>
+      <tbody>
+        <tr><td>重复使用</td><td>是否被多个指标、报表或团队使用？</td><td class="keep">值得统一建表</td></tr>
+        <tr><td>计算成本</td><td>是否需要大表扫描、复杂连接或跨日去重？</td><td class="keep">值得预计算</td></tr>
+        <tr><td>粒度稳定</td><td>是否能明确唯一键和一行代表什么？</td><td class="keep">具备建表基础</td></tr>
+        <tr><td>时效要求</td><td>是否要求固定刷新时间或查询 SLA？</td><td class="keep">值得物化</td></tr>
+        <tr><td>可追溯</td><td>是否能说明来源、过滤和重算方式？</td><td class="keep">可进入正式数仓</td></tr>
+        <tr><td>维护成本</td><td>是否增加大量同步、存储和口径维护？</td><td class="drop">成本过高时不要建</td></tr>
+      </tbody>
+    </table>
+    <div class="callout success">
+      最终决策可以概括为：<strong>业务价值 × 使用频率 × 计算成本 × 稳定粒度</strong>，再与存储和维护成本比较。
+      原始事实表负责可追溯，中间表负责复用，汇总表负责服务固定消费。
+    </div>
+  </section>
+
+  <section>
+    <h2>十五、从今天开始的实际实施顺序</h2>
+    <table>
+      <thead><tr><th>顺序</th><th>具体动作</th><th>交付物</th><th>完成标准</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>盘点用户、帖子、回复、板块和事件来源</td><td>数据源清单</td><td>知道每个字段来自哪里</td></tr>
+        <tr><td>2</td><td>确定 DAU、内容互动和留存指标合同</td><td>指标定义文档</td><td>分子、分母、时间和去重明确</td></tr>
+        <tr><td>3</td><td>保留原始事实并建立唯一键</td><td>ODS/原始层</td><td>可以按来源主键重算</td></tr>
+        <tr><td>4</td><td>建立清洗规则和质量检查</td><td>Staging 层</td><td>身份、事件、时间统一</td></tr>
+        <tr><td>5</td><td>建立用户日表和帖子日中间表</td><td>Intermediate 层</td><td>唯一键稳定，可重复重跑</td></tr>
+        <tr><td>6</td><td>建立产品日和板块日汇总表</td><td>Mart 层</td><td>看板读取快速且可对账</td></tr>
+        <tr><td>7</td><td>配置增量水位、失败重试和迟到回补</td><td>更新任务和运行日志</td><td>数据更新可观察、可恢复</td></tr>
+        <tr><td>8</td><td>用事件层与汇总层定期对账</td><td>数据质量报告</td><td>发现口径或刷新不一致</td></tr>
+      </tbody>
+    </table>
+    <div class="callout success">
+      数据仓库设计的终点不是“表建得最多”，而是：业务问题有稳定口径，数据来源可追溯，更新过程可恢复，报表结果可解释。
+    </div>
+  </section>
+</main>
+</body>
+</html>
