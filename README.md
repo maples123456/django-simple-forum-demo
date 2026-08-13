@@ -100,6 +100,7 @@ docker compose up -d postgres
 - [analytics/services.py 数据转换学习笔记](docs/analytics-services-study-notes.md)：逐步理解事件如何生成用户日和产品日汇总。
 - [论坛数据仓库结构、数据来源与更新](docs/forum-warehouse-architecture-and-refresh.html)：按阶段学习数仓分层、来源盘点、增量更新、迟到数据和重跑。
 - [论坛产品日表：含义与指标为什么这样设置](docs/forum-product-daily-table-metrics.html)：理解 ProductMetricsDaily 的粒度、字段来源、指标口径和下钻边界。
+- [论坛数据仓库：维度表的意义](docs/forum-dimension-tables-explanation.html)：用用户、板块、帖子维度解释事实表和产品指标。
 
 重新生成 PDF：
 

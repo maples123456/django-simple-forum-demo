@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>论坛数据仓库：维度表的意义</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #fff;
+      --text: #172033;
+      --muted: #667085;
+      --border: #dce3ed;
+      --primary: #3157d5;
+      --primary-soft: #eef2ff;
+      --green: #18794e;
+      --green-soft: #eaf7ef;
+      --orange: #a15c00;
+      --orange-soft: #fff4df;
+      --red: #b42318;
+      --red-soft: #fff0ee;
+      --code: #111827;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.7;
+    }
+    main { width: min(1160px, calc(100% - 32px)); margin: 36px auto; }
+    header, section {
+      margin-bottom: 24px;
+      padding: 28px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: 0 8px 28px rgb(16 24 40 / 5%);
+    }
+    header {
+      color: #fff;
+      border: 0;
+      background: linear-gradient(135deg, #172554, #3157d5 60%, #5478e8);
+    }
+    header p { max-width: 900px; color: #e7ebff; }
+    h1, h2, h3 { line-height: 1.3; }
+    h1 { margin: 0 0 12px; font-size: clamp(30px, 5vw, 48px); }
+    h2 { margin: 0 0 18px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    h3 { margin-top: 24px; margin-bottom: 10px; }
+    code { padding: 2px 6px; border-radius: 5px; background: #eef1f6; color: #263a75; font-family: "SFMono-Regular", Consolas, monospace; }
+    pre { overflow-x: auto; padding: 18px; border-radius: 10px; background: var(--code); color: #f8fafc; font-family: "SFMono-Regular", Consolas, monospace; line-height: 1.6; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+    table { width: 100%; margin: 16px 0; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 10px 12px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+    th { background: #f7f9fc; font-weight: 650; }
+    .data-table { min-width: 920px; font-size: 13px; }
+    .data-table th { white-space: nowrap; text-align: center; }
+    .data-table td { text-align: center; }
+    .keep { color: var(--green); background: var(--green-soft); font-weight: 650; }
+    .drop { color: var(--orange); background: var(--orange-soft); font-weight: 650; }
+    .callout { margin: 18px 0; padding: 16px 18px; border-left: 5px solid var(--primary); border-radius: 8px; background: var(--primary-soft); }
+    .success { border-left-color: var(--green); background: var(--green-soft); }
+    .warning { border-left-color: var(--orange); background: var(--orange-soft); }
+    .danger { border-left-color: var(--red); background: var(--red-soft); }
+    .tag { display: inline-block; margin-right: 6px; padding: 3px 9px; border-radius: 999px; background: #e4eaff; color: var(--primary); font-size: 13px; }
+    .pipeline { display: grid; grid-template-columns: repeat(7, minmax(110px, 1fr)); gap: 8px; align-items: center; margin: 22px 0; }
+    .node { min-height: 86px; padding: 14px 10px; border: 1px solid #cbd5ff; border-radius: 10px; background: var(--primary-soft); text-align: center; }
+    .node strong { display: block; color: #203b9b; }
+    .node small { color: var(--muted); }
+    .arrow { color: var(--primary); text-align: center; font-size: 24px; }
+    .definition-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .definition-card { padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: #fbfcfe; }
+    .definition-card h3 { margin-top: 0; font-size: 18px; }
+    .checklist li { margin-bottom: 8px; }
+    @media (max-width: 760px) {
+      main { width: min(100% - 20px, 1160px); margin: 16px auto; }
+      header, section { padding: 20px; }
+      .pipeline, .definition-grid { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); }
+      table { display: block; overflow-x: auto; white-space: nowrap; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="tag">django-simple-forum-demo</span>
+    <span class="tag">维度表</span>
+    <span class="tag">事实表 Join</span>
+    <h1>论坛数据仓库：维度表的意义</h1>
+    <p>
+      用论坛事件、用户、板块和帖子走一遍维度表：它为什么存在，怎样与事实表连接，
+      如何把“发生了多少”解释成“谁、在哪个板块、哪类帖子上发生了多少”。
+    </p>
+  </header>
+
+  <section>
+    <h2>一、先用一句话理解维度表</h2>
+    <div class="callout success">
+      <strong>事实表记录“发生了什么”；维度表记录“这个事实发生在谁、什么对象、什么分类上”。</strong>
+    </div>
+    <div class="definition-grid">
+      <div class="definition-card"><h3>事实表 Fact</h3><p>可计数、可聚合的业务发生记录。</p><p><code>U1 在 09:01 浏览了 P1</code></p></div>
+      <div class="definition-card"><h3>维度表 Dimension</h3><p>解释事实的实体属性和分类。</p><p><code>U1 是普通用户；P1 属于技术交流</code></p></div>
+    </div>
+    <table>
+      <thead><tr><th>没有维度表时</th><th>连接维度表后</th></tr></thead>
+      <tbody>
+        <tr><td>U1、B1、P1、post_view</td><td>用户 U1 在“技术交流”板块浏览了“新手教程”帖子</td></tr>
+        <tr><td>只有 user_id 和 board_id</td><td>可以按用户类型、板块名称、帖子主题分组</td></tr>
+        <tr><td>只能统计数量</td><td>可以解释数量来自哪个对象和哪个群体</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>二、阶段 0：原始事实和实体来源</h2>
+    <p>当前论坛项目中，维度通常来自业务实体表，事实通常来自事件表或业务行为表。</p>
+    <table class="data-table">
+      <thead><tr><th>来源表</th><th>一行代表什么</th><th>关键字段</th><th>在数仓中的角色</th></tr></thead>
+      <tbody>
+        <tr><td><code>analytics_analyticsevent</code></td><td>一次用户行为事件</td><td>event_id、user_id、board_id、post_id、event_name</td><td class="keep">事实来源</td></tr>
+        <tr><td><code>auth_user</code></td><td>一个用户账号</td><td>id、date_joined、is_staff、is_superuser</td><td class="keep">用户维度来源</td></tr>
+        <tr><td><code>forum_board</code></td><td>一个论坛板块</td><td>id、name、description、created_at</td><td class="keep">板块维度来源</td></tr>
+        <tr><td><code>forum_post</code></td><td>一个帖子</td><td>id、board_id、author_id、title、created_at</td><td class="keep">帖子维度和帖子事实来源</td></tr>
+        <tr><td><code>forum_reply</code></td><td>一条回复</td><td>id、post_id、author_id、created_at</td><td class="keep">回复事实来源</td></tr>
+      </tbody>
+    </table>
+    <div class="pipeline" aria-label="事实和维度来源">
+      <div class="node"><strong>AnalyticsEvent</strong><small>发生了什么</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>fact_event</strong><small>标准事实</small></div>
+      <div class="arrow">+</div>
+      <div class="node"><strong>dim_user / board / post</strong><small>谁、哪里、什么内容</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>可解释指标</strong><small>按维度下钻</small></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>三、阶段 1：没有维度属性的事实表能回答什么</h2>
+    <p>先看标准化后的事件事实。它能准确计数，但还不能解释对象名称和用户属性。</p>
+    <table class="data-table">
+      <thead><tr><th>fact_event_id</th><th>event_date</th><th>user_key</th><th>board_key</th><th>post_key</th><th>event_name</th><th>能直接回答</th></tr></thead>
+      <tbody>
+        <tr><td>E101</td><td>2026-08-10</td><td>U1</td><td>B1</td><td>P1</td><td>post_view</td><td class="keep">帖子浏览次数</td></tr>
+        <tr><td>E102</td><td>2026-08-10</td><td>U2</td><td>B1</td><td>P1</td><td>reply_create</td><td class="keep">回复次数</td></tr>
+        <tr><td>E103</td><td>2026-08-10</td><td>U3</td><td>B2</td><td>P2</td><td>post_like</td><td class="keep">点赞次数</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>问题</th><th>仅凭事实键能否回答</th><th>缺少什么</th></tr></thead>
+      <tbody>
+        <tr><td>技术交流板块有多少浏览？</td><td class="drop">不能完整回答</td><td>B1 对应的板块名称</td></tr>
+        <tr><td>普通用户和 staff 的行为量如何？</td><td class="drop">不能安全回答</td><td>用户身份属性</td></tr>
+        <tr><td>哪个帖子浏览高但回复少？</td><td class="drop">只能按 P1/P2 下钻</td><td>帖子标题和板块属性</td></tr>
+        <tr><td>总共有多少帖子浏览事件？</td><td class="keep">可以回答</td><td>只需要事实事件计数</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>四、阶段 2：连接用户维度，增加“谁”的解释</h2>
+    <p>把用户属性单独放在 <code>dim_user</code>，事实表只保存 <code>user_key</code>，通过 key 连接。</p>
+    <table class="data-table">
+      <thead><tr><th>user_key</th><th>user_id</th><th>user_type</th><th>register_date</th><th>is_staff</th><th>is_superuser</th></tr></thead>
+      <tbody>
+        <tr><td>U1</td><td>U1</td><td>普通用户</td><td>2026-08-01</td><td>FALSE</td><td>FALSE</td></tr>
+        <tr><td>U2</td><td>U2</td><td>普通用户</td><td>2026-08-10</td><td>FALSE</td><td>FALSE</td></tr>
+        <tr><td>U3</td><td>U3</td><td>staff</td><td>2026-07-01</td><td>TRUE</td><td>FALSE</td></tr>
+      </tbody>
+    </table>
+    <table class="data-table">
+      <thead><tr><th>fact_event_id</th><th>user_key</th><th>event_name</th><th>连接后的 user_type</th><th>是否进入普通用户指标</th><th>业务解释</th></tr></thead>
+      <tbody>
+        <tr><td>E101</td><td>U1</td><td>post_view</td><td>普通用户</td><td class="keep">是</td><td>普通用户浏览内容</td></tr>
+        <tr><td>E102</td><td>U2</td><td>reply_create</td><td>普通用户</td><td class="keep">是</td><td>新用户参与讨论</td></tr>
+        <tr><td>E103</td><td>U3</td><td>post_like</td><td>staff</td><td class="drop">否</td><td>内部账号不进入正式 DAU</td></tr>
+      </tbody>
+    </table>
+    <pre><code>SELECT
+    f.event_date,
+    u.user_type,
+    COUNT(*) AS event_count,
+    COUNT(DISTINCT f.user_key) AS active_users
+FROM fact_event AS f
+JOIN dim_user AS u
+  ON u.user_key = f.user_key
+WHERE f.event_name IN ('page_view', 'post_view', 'reply_create', 'post_like')
+  AND u.is_staff = FALSE
+  AND u.is_superuser = FALSE
+GROUP BY f.event_date, u.user_type;</code></pre>
+    <div class="callout success">
+      用户维度的意义不是增加 DAU 数字，而是让 DAU 可以按用户类型、新老用户、注册日期等属性解释和拆分。
+    </div>
+  </section>
+
+  <section>
+    <h2>五、阶段 3：连接板块维度，增加“在哪里”的解释</h2>
+    <table class="data-table">
+      <thead><tr><th>board_key</th><th>board_id</th><th>board_name</th><th>description</th><th>created_at</th></tr></thead>
+      <tbody>
+        <tr><td>B1</td><td>B1</td><td>技术交流</td><td>技术问题讨论</td><td>2026-07-01</td></tr>
+        <tr><td>B2</td><td>B2</td><td>社区生活</td><td>日常生活交流</td><td>2026-07-02</td></tr>
+      </tbody>
+    </table>
+    <table class="data-table">
+      <thead><tr><th>fact_event_id</th><th>board_key</th><th>event_name</th><th>board_name</th><th>事件量</th><th>独立用户</th></tr></thead>
+      <tbody>
+        <tr><td>E101</td><td>B1</td><td>post_view</td><td>技术交流</td><td>1</td><td>U1</td></tr>
+        <tr><td>E102</td><td>B1</td><td>reply_create</td><td>技术交流</td><td>1</td><td>U2</td></tr>
+        <tr><td>E103</td><td>B2</td><td>post_like</td><td>社区生活</td><td>1</td><td>U1</td></tr>
+      </tbody>
+    </table>
+    <p>连接维度后，才能形成板块日报：</p>
+    <table class="data-table">
+      <thead><tr><th>metric_date</th><th>board_key</th><th>board_name</th><th>active_users</th><th>post_views</th><th>replies_created</th><th>likes_created</th></tr></thead>
+      <tbody>
+        <tr><td>2026-08-10</td><td>B1</td><td>技术交流</td><td>2</td><td>1</td><td>1</td><td>0</td></tr>
+        <tr><td>2026-08-10</td><td>B2</td><td>社区生活</td><td>1</td><td>0</td><td>0</td><td>1</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warning">
+      板块活跃用户数相加可能大于全站 DAU，因为同一个用户可以在多个板块活跃。维度分组不应直接相加成全站独立用户。
+    </div>
+  </section>
+
+  <section>
+    <h2>六、阶段 4：连接帖子维度，增加“什么内容”的解释</h2>
+    <table class="data-table">
+      <thead><tr><th>post_key</th><th>post_id</th><th>board_key</th><th>author_key</th><th>title</th><th>created_at</th></tr></thead>
+      <tbody>
+        <tr><td>P1</td><td>P1</td><td>B1</td><td>U1</td><td>新手教程</td><td>2026-08-08</td></tr>
+        <tr><td>P2</td><td>P2</td><td>B2</td><td>U2</td><td>周末活动</td><td>2026-08-09</td></tr>
+      </tbody>
+    </table>
+    <table class="data-table">
+      <thead><tr><th>post_id</th><th>title</th><th>board_name</th><th>post_views</th><th>replies</th><th>内容诊断</th></tr></thead>
+      <tbody>
+        <tr><td>P1</td><td>新手教程</td><td>技术交流</td><td>100</td><td>2</td><td class="drop">高浏览、低回复</td></tr>
+        <tr><td>P2</td><td>周末活动</td><td>社区生活</td><td>20</td><td>8</td><td class="keep">低浏览、高讨论</td></tr>
+      </tbody>
+    </table>
+    <p>产品日表只能告诉你当天总共浏览了多少帖子；帖子维度让你知道具体是哪篇内容贡献了结果。</p>
+  </section>
+
+  <section>
+    <h2>七、维度表和事实表的连接粒度</h2>
+    <table>
+      <thead><tr><th>连接方式</th><th>事实粒度</th><th>维度粒度</th><th>风险</th></tr></thead>
+      <tbody>
+        <tr><td><code>fact_event.user_key = dim_user.user_key</code></td><td>一条事件</td><td>一个用户</td><td>正常的一对多分析连接</td></tr>
+        <tr><td><code>fact_event.board_key = dim_board.board_key</code></td><td>一条事件</td><td>一个板块</td><td>正常的一对多分析连接</td></tr>
+        <tr><td>事件直接连接多条标签</td><td>一条事件</td><td>一个帖子多个标签</td><td>可能产生连接扇出，事件数被放大</td></tr>
+        <tr><td>事实表连接未去重用户维度</td><td>一条事件</td><td>重复用户记录</td><td>COUNT(DISTINCT) 和属性版本冲突</td></tr>
+      </tbody>
+    </table>
+    <div class="callout danger">
+      维度表不是“随便 JOIN 的描述表”。连接前必须确认维度键唯一；如果维度表同一个业务实体有多行历史版本，必须明确使用当前版本还是事件发生时的版本。
+    </div>
+  </section>
+
+  <section>
+    <h2>八、当前属性和历史属性：为什么会有维度版本</h2>
+    <p>例如 U1 原来属于普通用户，后来被标记为 staff。分析历史事件时，可能有两种需求：</p>
+    <table>
+      <thead><tr><th>分析口径</th><th>维度连接方式</th><th>08-10 的历史事件如何归类</th></tr></thead>
+      <tbody>
+        <tr><td>当前身份口径</td><td>连接当前 dim_user</td><td>全部按 U1 当前身份解释</td></tr>
+        <tr><td>事件发生时身份</td><td>连接带 effective_from/effective_to 的历史维度</td><td>按 08-10 当天有效版本解释</td></tr>
+      </tbody>
+    </table>
+    <table class="data-table">
+      <thead><tr><th>user_key</th><th>user_id</th><th>user_type</th><th>effective_from</th><th>effective_to</th><th>当前版本</th></tr></thead>
+      <tbody>
+        <tr><td>U1-v1</td><td>U1</td><td>普通用户</td><td>2026-08-01</td><td>2026-08-12</td><td>否</td></tr>
+        <tr><td>U1-v2</td><td>U1</td><td>staff</td><td>2026-08-13</td><td>NULL</td><td>是</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warning">
+      当前论坛项目的 <code>auth_user</code> 是业务用户表，不等于已经实现了完整的历史维度。是否需要历史版本，要看业务是否要求“按行为发生时的属性”回溯。
+    </div>
+  </section>
+
+  <section>
+    <h2>九、什么时候值得建立维度表</h2>
+    <table>
+      <thead><tr><th>判断问题</th><th>值得建立维度表的信号</th><th>当前论坛例子</th></tr></thead>
+      <tbody>
+        <tr><td>是否被多个事实复用？</td><td>用户同时出现在事件、帖子、回复和点赞中</td><td class="keep">值得建立 dim_user</td></tr>
+        <tr><td>是否需要频繁下钻？</td><td>经常按板块、作者、帖子分类比较</td><td class="keep">值得建立 dim_board、dim_post</td></tr>
+        <tr><td>属性是否复杂？</td><td>包含分类、状态、来源、层级或历史版本</td><td class="keep">维度表更容易统一管理</td></tr>
+        <tr><td>属性是否稳定且很少使用？</td><td>只有一次分析且字段很少</td><td class="drop">可以直接 JOIN 业务表</td></tr>
+        <tr><td>是否只是一个指标结果？</td><td>例如当天 DAU 数字</td><td class="drop">应放产品日表，不是维度表</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>十、维度表不能替代什么</h2>
+    <table>
+      <thead><tr><th>误解</th><th>实际问题</th><th>正确做法</th></tr></thead>
+      <tbody>
+        <tr><td>维度表里有用户，所以可以计算 DAU</td><td>维度只知道用户存在，不知道当天是否行为</td><td>事实表按日期统计行为，再连接用户维度</td></tr>
+        <tr><td>维度表里有帖子，所以可以知道帖子被看了多少次</td><td>帖子维度没有浏览事件</td><td>连接帖子维度和浏览事实</td></tr>
+        <tr><td>把板块名称直接复制到产品日表</td><td>产品日表粒度是日期，混入板块会破坏粒度</td><td>建立 BoardMetricsDaily 或板块维度下钻</td></tr>
+        <tr><td>维度表更新后历史指标自动正确</td><td>当前属性可能覆盖历史状态</td><td>明确当前口径或历史版本口径</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>十一、最终理解</h2>
+    <div class="pipeline" aria-label="维度表解释事实的过程">
+      <div class="node"><strong>事实</strong><small>发生了多少事件</small></div>
+      <div class="arrow">+</div>
+      <div class="node"><strong>用户维度</strong><small>谁发生了行为</small></div>
+      <div class="arrow">+</div>
+      <div class="node"><strong>板块/帖子维度</strong><small>在哪里、什么内容</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>可解释指标</strong><small>按维度下钻和诊断</small></div>
+    </div>
+    <ul class="checklist">
+      <li>事实表负责计数和聚合。</li>
+      <li>维度表负责解释、筛选、分组和下钻。</li>
+      <li>维度表的核心不是增加数据量，而是统一实体属性。</li>
+      <li>用户、板块、帖子适合做维度，因为它们被多个业务事实反复引用。</li>
+      <li>连接维度前必须确认维度键唯一，并明确当前属性还是历史属性。</li>
+      <li>产品日表保存总体指标，维度表支持解释总体指标来自哪里。</li>
+    </ul>
+    <div class="callout success">
+      最终可以这样记：<strong>事实表告诉你“发生了什么”，维度表告诉你“这件事属于谁、哪里、什么对象”，产品日表告诉你“今天整体怎样”。</strong>
+    </div>
+  </section>
+</main>
+</body>
+</html>
