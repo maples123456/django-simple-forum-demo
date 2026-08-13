@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>论坛产品日表：含义与指标设计</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #fff;
+      --text: #172033;
+      --muted: #667085;
+      --border: #dce3ed;
+      --primary: #3157d5;
+      --primary-soft: #eef2ff;
+      --green: #18794e;
+      --green-soft: #eaf7ef;
+      --orange: #a15c00;
+      --orange-soft: #fff4df;
+      --red: #b42318;
+      --red-soft: #fff0ee;
+      --code: #111827;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.7;
+    }
+    main { width: min(1160px, calc(100% - 32px)); margin: 36px auto; }
+    header, section {
+      margin-bottom: 24px;
+      padding: 28px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: 0 8px 28px rgb(16 24 40 / 5%);
+    }
+    header {
+      color: #fff;
+      border: 0;
+      background: linear-gradient(135deg, #172554, #3157d5 60%, #5478e8);
+    }
+    header p { max-width: 900px; color: #e7ebff; }
+    h1, h2, h3 { line-height: 1.3; }
+    h1 { margin: 0 0 12px; font-size: clamp(30px, 5vw, 48px); }
+    h2 { margin: 0 0 18px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    h3 { margin-top: 24px; margin-bottom: 10px; }
+    code { padding: 2px 6px; border-radius: 5px; background: #eef1f6; color: #263a75; font-family: "SFMono-Regular", Consolas, monospace; }
+    pre { overflow-x: auto; padding: 18px; border-radius: 10px; background: var(--code); color: #f8fafc; font-family: "SFMono-Regular", Consolas, monospace; line-height: 1.6; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+    table { width: 100%; margin: 16px 0; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 10px 12px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+    th { background: #f7f9fc; font-weight: 650; }
+    .data-table { min-width: 920px; font-size: 13px; }
+    .data-table th { white-space: nowrap; text-align: center; }
+    .data-table td { text-align: center; }
+    .keep { color: var(--green); background: var(--green-soft); font-weight: 650; }
+    .drop { color: var(--orange); background: var(--orange-soft); font-weight: 650; }
+    .callout { margin: 18px 0; padding: 16px 18px; border-left: 5px solid var(--primary); border-radius: 8px; background: var(--primary-soft); }
+    .success { border-left-color: var(--green); background: var(--green-soft); }
+    .warning { border-left-color: var(--orange); background: var(--orange-soft); }
+    .danger { border-left-color: var(--red); background: var(--red-soft); }
+    .tag { display: inline-block; margin-right: 6px; padding: 3px 9px; border-radius: 999px; background: #e4eaff; color: var(--primary); font-size: 13px; }
+    .pipeline { display: grid; grid-template-columns: repeat(7, minmax(110px, 1fr)); gap: 8px; align-items: center; margin: 22px 0; }
+    .node { min-height: 86px; padding: 14px 10px; border: 1px solid #cbd5ff; border-radius: 10px; background: var(--primary-soft); text-align: center; }
+    .node strong { display: block; color: #203b9b; }
+    .node small { color: var(--muted); }
+    .arrow { color: var(--primary); text-align: center; font-size: 24px; }
+    .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 18px 0; }
+    .metric-card { padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: #fbfcfe; }
+    .metric-card h3 { margin-top: 0; font-size: 18px; }
+    .metric-card code { display: block; margin-bottom: 8px; color: var(--primary); }
+    .checklist li { margin-bottom: 8px; }
+    @media (max-width: 760px) {
+      main { width: min(100% - 20px, 1160px); margin: 16px auto; }
+      header, section { padding: 20px; }
+      .pipeline, .metric-grid { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); }
+      table { display: block; overflow-x: auto; white-space: nowrap; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="tag">django-simple-forum-demo</span>
+    <span class="tag">ProductMetricsDaily</span>
+    <span class="tag">指标设计</span>
+    <h1>论坛产品日表：含义与指标为什么这样设置</h1>
+    <p>
+      产品日表不是“把所有指标放在一张表里”，而是把论坛每天最重要、最稳定、最常被读取的结果，
+      固定到“日期 × 产品”的粒度。本文从用户日数据和事件明细出发，解释每组指标回答什么问题、为什么需要、分母是什么，以及不能误解成什么。
+    </p>
+  </header>
+
+  <section>
+    <h2>一、产品日表到底是什么</h2>
+    <div class="callout success">
+      <strong>ProductMetricsDaily 的一行代表：某个自然日的论坛产品整体指标快照。</strong>
+      它不是一行一个用户，也不是一行一个事件；它服务的是日趋势、日报和管理员看板。
+    </div>
+    <table>
+      <thead><tr><th>表</th><th>一行代表什么</th><th>例子</th><th>主要用途</th></tr></thead>
+      <tbody>
+        <tr><td>AnalyticsEvent</td><td>一次事件</td><td>U1 在 09:01 浏览帖子</td><td>事实追溯、重新定义口径</td></tr>
+        <tr><td>UserActivityDaily</td><td>一个用户在一天的行为汇总</td><td>U1 当天看了 2 个内容</td><td>用户分层、用户级分析</td></tr>
+        <tr><td>ProductMetricsDaily</td><td>一天的产品指标汇总</td><td>08-10 DAU=2</td><td>日趋势、管理看板</td></tr>
+        <tr><td>BoardMetricsDaily</td><td>一个板块在一天的指标汇总</td><td>技术交流板块 DAU=2</td><td>板块下钻和贡献分析</td></tr>
+      </tbody>
+    </table>
+    <table class="data-table">
+      <thead><tr><th>metric_date</th><th>dau</th><th>new_users</th><th>page_views</th><th>posts_created</th><th>generated_at</th></tr></thead>
+      <tbody>
+        <tr><td>2026-08-10</td><td>2</td><td>2</td><td>1</td><td>0</td><td>2026-08-11 00:15</td></tr>
+        <tr><td>2026-08-11</td><td>3</td><td>1</td><td>4</td><td>2</td><td>2026-08-12 00:14</td></tr>
+      </tbody>
+    </table>
+    <p>表的主键是 <code>metric_date</code>，所以同一个日期原则上只有一行。重跑日期应该更新这一行，而不是再插入一行。</p>
+  </section>
+
+  <section>
+    <h2>二、为什么不能把所有业务数据直接放进产品日表</h2>
+    <p>先看同一天的事件如何逐层压缩：</p>
+    <div class="pipeline" aria-label="产品日表粒度变化">
+      <div class="node"><strong>8 行</strong><small>事件明细</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>3 行</strong><small>用户日记录</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>1 行</strong><small>产品日指标</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>看板</strong><small>趋势和诊断</small></div>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>event_id</th><th>user_id</th><th>event_name</th><th>用户日是否保留</th><th>原因</th></tr></thead>
+      <tbody>
+        <tr><td>E1</td><td>U1</td><td>page_view</td><td class="keep">是</td><td>有效浏览</td></tr>
+        <tr><td>E2</td><td>U1</td><td>post_view</td><td class="keep">合并到 U1</td><td>同一用户同一天一行</td></tr>
+        <tr><td>E3</td><td>U2</td><td>reply_create</td><td class="keep">是</td><td>有效互动</td></tr>
+        <tr><td>E4</td><td>U2</td><td>post_like</td><td class="keep">合并到 U2</td><td>同一用户同一天一行</td></tr>
+        <tr><td>E5</td><td>U3</td><td>login</td><td class="drop">否</td><td>不是有效活跃事件</td></tr>
+        <tr><td>E6</td><td>NULL</td><td>page_view</td><td class="drop">否</td><td>匿名不进入登录 DAU</td></tr>
+        <tr><td>E7</td><td>U4</td><td>post_view</td><td class="drop">否</td><td>staff 排除</td></tr>
+        <tr><td>E8</td><td>U3</td><td>sign_up</td><td class="drop">否</td><td>注册不等于活跃</td></tr>
+      </tbody>
+    </table>
+    <table class="data-table">
+      <thead><tr><th>activity_date</th><th>user_id</th><th>event_count</th><th>page_views</th><th>post_views</th><th>replies</th><th>likes</th></tr></thead>
+      <tbody>
+        <tr><td>2026-08-10</td><td>U1</td><td>2</td><td>1</td><td>1</td><td>0</td><td>0</td></tr>
+        <tr><td>2026-08-10</td><td>U2</td><td>2</td><td>0</td><td>0</td><td>1</td><td>1</td></tr>
+        <tr><td>2026-08-10</td><td>U3</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+      </tbody>
+    </table>
+    <table class="data-table">
+      <thead><tr><th>metric_date</th><th>dau</th><th>page_views</th><th>post_views</th><th>replies_created</th><th>likes_created</th></tr></thead>
+      <tbody><tr><td>2026-08-10</td><td>2</td><td>1</td><td>1</td><td>1</td><td>1</td></tr></tbody>
+    </table>
+    <div class="callout warning">
+      产品日表只保留回答“产品今天怎样”的字段；如果要追踪 U1 具体看了哪篇帖子，必须回到事件表或用户日表，不能期待产品日表保留明细。
+    </div>
+  </section>
+
+  <section>
+    <h2>三、指标设置的总原则：覆盖四类业务问题</h2>
+    <div class="metric-grid">
+      <div class="metric-card"><h3>规模</h3><code>dau / wau / mau</code><p>有多少独立用户在使用论坛？</p></div>
+      <div class="metric-card"><h3>消费</h3><code>page_views / board_views / post_views</code><p>用户是否在看内容、看了多少内容？</p></div>
+      <div class="metric-card"><h3>生产</h3><code>posts_created / replies_created</code><p>社区是否持续产生内容和讨论？</p></div>
+      <div class="metric-card"><h3>互动</h3><code>likes_created / interaction_users</code><p>内容是否获得回应和认可？</p></div>
+      <div class="metric-card"><h3>新增</h3><code>new_users / activated_new_users</code><p>新增用户是否真正开始使用？</p></div>
+      <div class="metric-card"><h3>留存</h3><code>d1 / d7 / d30_retention_rate</code><p>用户之后是否回来？</p></div>
+    </div>
+    <p>指标不是越多越好。产品日表优先保存“每天固定查看、口径稳定、可以支持业务判断”的指标；更细的分组和诊断放到其他表。</p>
+  </section>
+
+  <section>
+    <h2>四、规模指标：DAU、WAU、MAU 为什么同时存在</h2>
+    <table>
+      <thead><tr><th>字段</th><th>业务问题</th><th>时间窗口</th><th>去重键</th><th>为什么需要</th><th>不能怎么解释</th></tr></thead>
+      <tbody>
+        <tr><td><code>dau</code></td><td>今天有多少人活跃？</td><td>当天自然日</td><td>user_id</td><td>观察每日使用规模</td><td>不等于用户满意度或留存</td></tr>
+        <tr><td><code>wau</code></td><td>最近 7 天覆盖多少人？</td><td>当天及前 6 天</td><td>窗口内 user_id</td><td>降低单日波动</td><td>不能把 7 天 DAU 相加</td></tr>
+        <tr><td><code>mau</code></td><td>最近 30 天覆盖多少人？</td><td>当天及前 29 天</td><td>窗口内 user_id</td><td>观察月度用户池</td><td>不等于月留存</td></tr>
+      </tbody>
+    </table>
+    <pre><code>-- DAU：当天独立用户
+COUNT(DISTINCT user_id)
+WHERE activity_date = :metric_date
+
+-- WAU：窗口内重新去重，不能 SUM 每天 DAU
+COUNT(DISTINCT user_id)
+WHERE activity_date BETWEEN :metric_date - INTERVAL '6 day'
+                        AND :metric_date
+
+-- MAU：窗口内重新去重
+COUNT(DISTINCT user_id)
+WHERE activity_date BETWEEN :metric_date - INTERVAL '29 day'
+                        AND :metric_date;</code></pre>
+    <table class="data-table">
+      <thead><tr><th>日期</th><th>当天活跃用户</th><th>DAU</th><th>7 日窗口用户</th><th>WAU</th><th>DAU/WAU</th></tr></thead>
+      <tbody>
+        <tr><td>08-10</td><td>U1、U2</td><td>2</td><td>U1、U2、U3、U4</td><td>4</td><td>50%</td></tr>
+      </tbody>
+    </table>
+    <p><code>DAU/WAU</code> 反映周活跃用户中当天也活跃的比例，粗略表示使用频率；它不是 D1 留存。</p>
+  </section>
+
+  <section>
+    <h2>五、内容消费指标：为什么既要次数又要用户数</h2>
+    <table>
+      <thead><tr><th>字段</th><th>分子/数值含义</th><th>回答的问题</th><th>为什么不能只保留一个</th></tr></thead>
+      <tbody>
+        <tr><td><code>page_views</code></td><td>page_view 事件次数</td><td>页面被打开了多少次？</td><td>无法知道是很多人各看一次还是少数人反复刷新</td></tr>
+        <tr><td><code>page_view_users</code></td><td>产生 page_view 的独立用户数</td><td>有多少人进入论坛？</td><td>无法反映单个用户浏览深度</td></tr>
+        <tr><td><code>post_views</code></td><td>帖子浏览事件次数</td><td>内容总消费量是多少？</td><td>不能直接当作浏览用户数</td></tr>
+        <tr><td><code>post_view_users</code></td><td>独立帖子浏览用户数</td><td>多少用户看过帖子？</td><td>不能反映重复阅读</td></tr>
+        <tr><td><code>session_count</code></td><td>非空 session_id 去重数</td><td>用户通过多少次会话访问？</td><td>没有可靠 session_id 时会低估</td></tr>
+      </tbody>
+    </table>
+    <table class="data-table">
+      <thead><tr><th>用户</th><th>page_view 次数</th><th>post_view 次数</th><th>session 数</th><th>用户层解释</th></tr></thead>
+      <tbody>
+        <tr><td>U1</td><td>1</td><td>1</td><td>1</td><td>进入并阅读一次</td></tr>
+        <tr><td>U2</td><td>1</td><td>0</td><td>1</td><td>进入但没有打开帖子</td></tr>
+        <tr><td>U3</td><td>5</td><td>5</td><td>1</td><td>同一会话反复阅读</td></tr>
+      </tbody>
+    </table>
+    <p>汇总结果是 <code>page_views=7</code>、<code>page_view_users=3</code>、<code>post_views=6</code>、<code>post_view_users=2</code>。次数和用户数回答的是不同问题。</p>
+  </section>
+
+  <section>
+    <h2>六、内容生产与互动指标：为什么同时记录动作数和用户数</h2>
+    <table>
+      <thead><tr><th>字段</th><th>动作量</th><th>用户量</th><th>可派生指标</th><th>业务含义</th></tr></thead>
+      <tbody>
+        <tr><td>发帖</td><td><code>posts_created</code></td><td><code>posting_users</code></td><td>发帖率、每发帖用户发帖数</td><td>内容供给和创作者覆盖</td></tr>
+        <tr><td>回复</td><td><code>replies_created</code></td><td><code>replying_users</code></td><td>回复率、每帖回复数</td><td>讨论参与和回应深度</td></tr>
+        <tr><td>点赞</td><td><code>likes_created</code></td><td><code>liking_users</code></td><td>点赞率、人均点赞</td><td>轻量反馈和内容认可</td></tr>
+        <tr><td>取消点赞</td><td><code>unlikes_created</code></td><td>当前表未保存取消点赞用户数</td><td>点赞动作净变化</td><td>识别撤回行为，但不是当前点赞状态</td></tr>
+      </tbody>
+    </table>
+    <table class="data-table">
+      <thead><tr><th>用户</th><th>发帖数</th><th>回复数</th><th>点赞数</th><th>用户类型示例</th></tr></thead>
+      <tbody>
+        <tr><td>U1</td><td>3</td><td>0</td><td>0</td><td>高频创作者</td></tr>
+        <tr><td>U2</td><td>0</td><td>2</td><td>0</td><td>讨论用户</td></tr>
+        <tr><td>U3</td><td>0</td><td>0</td><td>2</td><td>轻互动用户</td></tr>
+        <tr><td>U4</td><td>0</td><td>0</td><td>0</td><td>只读用户</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warning">
+      3 篇帖子 / 4 个 DAU 是“人均帖子数”，不是“发帖率”。发帖率的分子必须是发帖用户数，而不是帖子动作数。
+    </div>
+  </section>
+
+  <section>
+    <h2>七、新增、行为分层和留存为什么放在产品日表</h2>
+    <table>
+      <thead><tr><th>字段组</th><th>字段</th><th>分子/分母</th><th>业务问题</th><th>设置理由</th></tr></thead>
+      <tbody>
+        <tr><td>新增规模</td><td><code>new_users</code></td><td>当天注册普通用户数 / 无</td><td>每天新增了多少用户？</td><td>判断增长来源</td></tr>
+        <tr><td>新增激活</td><td><code>activated_new_users</code></td><td>注册日有效用户 / 新增用户</td><td>新增是否开始使用？</td><td>区分注册量和有效使用</td></tr>
+        <tr><td>行为分层</td><td><code>read_only_users</code></td><td>只浏览用户数</td><td>活跃用户中有多少只读？</td><td>观察阅读到互动的结构</td></tr>
+        <tr><td>行为分层</td><td><code>interaction_users</code></td><td>回复或点赞用户数</td><td>有多少用户参与互动？</td><td>衡量社区参与广度</td></tr>
+        <tr><td>行为分层</td><td><code>creator_users</code></td><td>发帖用户数</td><td>有多少用户生产主题内容？</td><td>衡量内容供给来源</td></tr>
+        <tr><td>留存</td><td><code>d1/d7/d30_retention_rate</code></td><td>目标日回来用户 / 注册 Cohort 用户</td><td>用户之后是否回来？</td><td>把规模和持续使用分开</td></tr>
+      </tbody>
+    </table>
+    <div class="callout danger">
+      当前项目的留存字段是注册 Cohort 留存，不是“当天 DAU 中多少人回来”。留存必须使用注册日期体系，不能把行为日期和 Cohort 日期混为一谈。
+    </div>
+  </section>
+
+  <section>
+    <h2>八、当前 ProductMetricsDaily 的字段从哪里来</h2>
+    <table class="data-table">
+      <thead><tr><th>产品日字段</th><th>主要来源</th><th>典型计算</th><th>最终粒度</th></tr></thead>
+      <tbody>
+        <tr><td>dau</td><td>合格事件</td><td>COUNT(DISTINCT user_id)</td><td>日期</td></tr>
+        <tr><td>wau / mau</td><td>窗口内合格事件</td><td>窗口重新 COUNT(DISTINCT user_id)</td><td>日期</td></tr>
+        <tr><td>page_views / posts_created / replies_created</td><td>合格事件</td><td>按 event_name 计数</td><td>日期</td></tr>
+        <tr><td>page_view_users / posting_users / replying_users</td><td>合格事件</td><td>按 event_name 的 user_id 去重</td><td>日期</td></tr>
+        <tr><td>read_only_users / interaction_users / creator_users</td><td>用户日行为特征</td><td>按优先级分类计数</td><td>日期</td></tr>
+        <tr><td>d1/d7/d30_retention_rate</td><td>注册用户 + 目标日事件</td><td>retained_users / cohort_size</td><td>注册日期</td></tr>
+        <tr><td>anonymous_uv / anonymous_page_views</td><td>匿名事件</td><td>anonymous_id 去重或事件计数</td><td>日期</td></tr>
+      </tbody>
+    </table>
+    <pre><code>ProductMetricsDaily.objects.update_or_create(
+    metric_date=day,
+    defaults={
+        'dau': eligible_events.filter(
+            event_name__in=EFFECTIVE_EVENTS
+        ).values('user_id').distinct().count(),
+        'page_views': events.filter(
+            event_name='page_view'
+        ).count(),
+        'posting_users': events.filter(
+            event_name='post_create'
+        ).values('user_id').distinct().count(),
+    },
+)</code></pre>
+    <p>代码中的 <code>update_or_create(metric_date=day)</code> 体现了产品日表的更新语义：同一天重跑时更新当天结果，而不是插入重复日期。</p>
+    <div class="callout warning">
+      当前项目实现中，<code>dau</code> 使用 <code>EFFECTIVE_EVENTS</code> 计算；
+      <code>session_count</code> 则来自当天普通登录用户的事件集合，二者的事件口径不完全相同。
+      因此不能直接把“会话数 / DAU”解释成严格的有效行为会话深度，除非先统一 session 的过滤口径。
+    </div>
+  </section>
+
+  <section>
+    <h2>九、为什么这些指标不能全部合并成一个指标</h2>
+    <table>
+      <thead><tr><th>错误合并方式</th><th>实际混淆的概念</th><th>正确拆分</th></tr></thead>
+      <tbody>
+        <tr><td>用 event_count 当 DAU</td><td>事件量 ≠ 用户量</td><td>DAU 用独立 user_id，事件量单独记录</td></tr>
+        <tr><td>用 page_views 当访问用户</td><td>浏览次数 ≠ 浏览用户数</td><td>同时保存 page_views 和 page_view_users</td></tr>
+        <tr><td>用 posts_created / DAU 当发帖率</td><td>动作比例 ≠ 用户参与比例</td><td>posting_users / DAU 是发帖率</td></tr>
+        <tr><td>用每日 DAU 相加当 WAU</td><td>跨日用户重复计数</td><td>窗口内重新去重</td></tr>
+        <tr><td>把点赞数当当前点赞</td><td>动作过程 ≠ 当前状态</td><td>点赞动作、取消动作和当前关系分开</td></tr>
+        <tr><td>把 DAU/WAU 当留存</td><td>频率 ≠ Cohort 留存</td><td>留存按注册 Cohort 和目标日计算</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>十、匿名指标为什么要单独保存</h2>
+    <p>当前产品日表同时保存登录用户指标和匿名访问指标，因为两类身份回答的是不同业务问题。</p>
+    <table>
+      <thead><tr><th>字段</th><th>去重或计数对象</th><th>回答的问题</th><th>不能等同于</th></tr></thead>
+      <tbody>
+        <tr><td><code>anonymous_page_views</code></td><td>匿名 page_view 事件次数</td><td>匿名浏览行为发生了多少次？</td><td>匿名 UV</td></tr>
+        <tr><td><code>anonymous_uv</code></td><td>匿名 page_view 的 anonymous_id 去重</td><td>有多少匿名身份浏览过？</td><td>全站独立访客</td></tr>
+        <tr><td><code>anonymous_visitors</code></td><td>排除已与登录用户关联的匿名身份后去重</td><td>还有多少访客没有回连到登录用户？</td><td>匿名 UV</td></tr>
+        <tr><td><code>anonymous_registrations</code></td><td>能通过 anonymous_id 和时间顺序归因的普通注册</td><td>匿名访问转注册效果如何？</td><td>全部注册数</td></tr>
+      </tbody>
+    </table>
+    <table class="data-table">
+      <thead><tr><th>anonymous_id</th><th>匿名 page_view</th><th>后续注册</th><th>是否归因</th><th>匿名 UV</th><th>匿名访客</th></tr></thead>
+      <tbody>
+        <tr><td>A1</td><td>是</td><td>U1，ID 相同</td><td class="keep">是</td><td>+1</td><td>不计</td></tr>
+        <tr><td>A2</td><td>是</td><td>无</td><td>否</td><td>+1</td><td>+1</td></tr>
+        <tr><td>A3</td><td>是</td><td>U2，ID 不同</td><td>否</td><td>+1</td><td>+1</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warning">
+      匿名 UV 上升不一定代表真实独立访客同比上升；如果 anonymous_id 丢失或登录前后没有正确回连，归因指标会受到影响。
+    </div>
+  </section>
+
+  <section>
+    <h2>十一、产品日表能回答什么，不能回答什么</h2>
+    <table>
+      <thead><tr><th>问题</th><th>产品日表能否回答</th><th>需要回到哪一层</th></tr></thead>
+      <tbody>
+        <tr><td>08-10 DAU 是多少？</td><td class="keep">能</td><td>ProductMetricsDaily</td></tr>
+        <tr><td>DAU 比昨天上涨还是下降？</td><td class="keep">能</td><td>ProductMetricsDaily</td></tr>
+        <tr><td>DAU 下降来自哪个板块？</td><td class="drop">不能直接回答</td><td>BoardMetricsDaily + 事件/板块维度</td></tr>
+        <tr><td>哪个用户被重复事件计入？</td><td class="drop">不能回答</td><td>AnalyticsEvent</td></tr>
+        <tr><td>新增用户为什么没有激活？</td><td class="drop">只能看到总量</td><td>UserActivityDaily + 事件明细</td></tr>
+        <tr><td>某帖子为什么零回复？</td><td class="drop">不能回答</td><td>帖子日中间表 + Reply</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warning">
+      产品日表是“总览层”，不是“万能查询层”。当业务问题从“发生了多少”变成“为什么发生”，就必须下钻到用户、板块、帖子或事件粒度。
+    </div>
+  </section>
+
+  <section>
+    <h2>十二、建立产品日表前的最终检查</h2>
+    <table>
+      <thead><tr><th>检查项</th><th>合格标准</th></tr></thead>
+      <tbody>
+        <tr><td>粒度</td><td>明确一行是一个自然日，主键是 metric_date</td></tr>
+        <tr><td>指标合同</td><td>每个字段都有业务问题、分子、分母、去重和时间窗口</td></tr>
+        <tr><td>来源</td><td>能够回溯到事件、用户日、注册 Cohort 或业务事实</td></tr>
+        <tr><td>一致性</td><td>DAU 与事件层/用户日层可以对账</td></tr>
+        <tr><td>完整性</td><td>未完结自然日有明确标记，不与完整日混比</td></tr>
+        <tr><td>更新</td><td>同一天可重跑，不能产生重复日期或重复累加</td></tr>
+        <tr><td>边界</td><td>知道哪些问题必须下钻到其他表</td></tr>
+      </tbody>
+    </table>
+    <div class="callout success">
+      产品日表的设计目标可以概括为：<strong>用一行回答“论坛今天整体怎样”，用其他粒度的表回答“为什么会这样”。</strong>
+    </div>
+  </section>
+</main>
+</body>
+</html>

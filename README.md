@@ -99,6 +99,7 @@ docker compose up -d postgres
 - [论坛常见指标能力评估手册（PDF）](output/pdf/forum-metrics-assessment-guide.pdf)：固定表格边界、全单元格居中，适合稳定查看和打印，不受 Markdown 渲染器影响。
 - [analytics/services.py 数据转换学习笔记](docs/analytics-services-study-notes.md)：逐步理解事件如何生成用户日和产品日汇总。
 - [论坛数据仓库结构、数据来源与更新](docs/forum-warehouse-architecture-and-refresh.html)：按阶段学习数仓分层、来源盘点、增量更新、迟到数据和重跑。
+- [论坛产品日表：含义与指标为什么这样设置](docs/forum-product-daily-table-metrics.html)：理解 ProductMetricsDaily 的粒度、字段来源、指标口径和下钻边界。
 
 重新生成 PDF：
 
