@@ -3,6 +3,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .models import Board, Post
+from analytics.models import AnalyticsEvent
 
 
 class ForumViewsTests(TestCase):
@@ -27,5 +28,7 @@ class ForumViewsTests(TestCase):
         self.post.refresh_from_db()
         self.assertEqual(self.post.replies.count(), 1)
         self.assertTrue(self.post.likes.filter(pk=self.user.pk).exists())
+        self.assertTrue(AnalyticsEvent.objects.filter(user=self.user, event_name='reply_create').exists())
+        self.assertTrue(AnalyticsEvent.objects.filter(user=self.user, event_name='post_like').exists())
 
 # Create your tests here.

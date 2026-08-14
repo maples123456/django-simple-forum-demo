@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>论坛数仓表：什么时候值得建立</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #fff;
+      --text: #172033;
+      --muted: #667085;
+      --border: #dce3ed;
+      --primary: #3157d5;
+      --primary-soft: #eef2ff;
+      --green: #18794e;
+      --green-soft: #eaf7ef;
+      --orange: #a15c00;
+      --orange-soft: #fff4df;
+      --red: #b42318;
+      --red-soft: #fff0ee;
+      --code: #111827;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.7;
+    }
+    main { width: min(1120px, calc(100% - 32px)); margin: 36px auto; }
+    header, section {
+      margin-bottom: 24px;
+      padding: 28px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--card);
+      box-shadow: 0 8px 28px rgb(16 24 40 / 5%);
+    }
+    header {
+      color: #fff;
+      border: 0;
+      background: linear-gradient(135deg, #172554, #3157d5 60%, #5478e8);
+    }
+    header p { max-width: 850px; color: #e7ebff; }
+    h1, h2, h3 { line-height: 1.3; }
+    h1 { margin: 0 0 12px; font-size: clamp(30px, 5vw, 48px); }
+    h2 { margin: 0 0 18px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    h3 { margin-top: 24px; margin-bottom: 10px; }
+    code { padding: 2px 6px; border-radius: 5px; background: #eef1f6; color: #263a75; font-family: "SFMono-Regular", Consolas, monospace; }
+    pre { overflow-x: auto; padding: 18px; border-radius: 10px; background: var(--code); color: #f8fafc; font-family: "SFMono-Regular", Consolas, monospace; line-height: 1.6; }
+    pre code { padding: 0; background: transparent; color: inherit; }
+    table { width: 100%; margin: 16px 0; border-collapse: collapse; font-size: 15px; }
+    th, td { padding: 10px 12px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+    th { background: #f7f9fc; font-weight: 650; }
+    .data-table { min-width: 850px; font-size: 13px; }
+    .data-table th { white-space: nowrap; text-align: center; }
+    .data-table td { text-align: center; }
+    .keep { color: var(--green); background: var(--green-soft); font-weight: 650; }
+    .drop { color: var(--orange); background: var(--orange-soft); font-weight: 650; }
+    .callout { margin: 18px 0; padding: 16px 18px; border-left: 5px solid var(--primary); border-radius: 8px; background: var(--primary-soft); }
+    .success { border-left-color: var(--green); background: var(--green-soft); }
+    .warning { border-left-color: var(--orange); background: var(--orange-soft); }
+    .danger { border-left-color: var(--red); background: var(--red-soft); }
+    .tag { display: inline-block; margin-right: 6px; padding: 3px 9px; border-radius: 999px; background: #e4eaff; color: var(--primary); font-size: 13px; }
+    .pipeline { display: grid; grid-template-columns: repeat(7, minmax(100px, 1fr)); gap: 8px; align-items: center; margin: 22px 0; }
+    .node { min-height: 88px; padding: 14px 10px; border: 1px solid #cbd5ff; border-radius: 10px; background: var(--primary-soft); text-align: center; }
+    .node strong { display: block; color: #203b9b; }
+    .node small { color: var(--muted); }
+    .arrow { color: var(--primary); text-align: center; font-size: 24px; }
+    .decision-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 18px 0; }
+    .decision-card { padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: #fbfcfe; }
+    .decision-card h3 { margin-top: 0; font-size: 18px; }
+    .checklist li { margin-bottom: 8px; }
+    @media (max-width: 760px) {
+      main { width: min(100% - 20px, 1120px); margin: 16px auto; }
+      header, section { padding: 20px; }
+      .pipeline, .decision-grid { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); }
+      table { display: block; overflow-x: auto; white-space: nowrap; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="tag">django-simple-forum-demo</span>
+    <span class="tag">数据仓库</span>
+    <span class="tag">表设计决策</span>
+    <h1>论坛数仓表：什么时候值得建立</h1>
+    <p>
+      从一个具体的 DAU 业务问题出发，学习如何判断应该保留原始事实、建立用户日表、产品日表，
+      还是只使用一次性 SQL、CTE 或视图。
+    </p>
+  </header>
+
+  <section>
+    <h2>一、原始数据表和数据仓库表是什么关系</h2>
+    <div class="callout success">
+      原始数据通常应该先以可追溯的事实粒度保存，但并不是所有原始数据都要继续建立一张新表。
+      数据仓库表的下一层应该由业务问题、使用频率、数据粒度和性能要求决定。
+    </div>
+    <table>
+      <thead><tr><th>数据层</th><th>一行代表什么</th><th>当前论坛对应对象</th><th>主要作用</th></tr></thead>
+      <tbody>
+        <tr><td>原始事实层</td><td>一行一个原始事件或业务事实</td><td><code>analytics_analyticsevent</code>、<code>forum_post</code></td><td>保留事实、支持回溯和重算</td></tr>
+        <tr><td>清洗层</td><td>一行一个通过基础质量和身份规则的事实</td><td>合格登录普通用户事件</td><td>统一过滤和数据质量规则</td></tr>
+        <tr><td>中间层</td><td>一行一个用户每天的行为</td><td><code>analytics_useractivitydaily</code></td><td>复用用户级分析逻辑</td></tr>
+        <tr><td>汇总层</td><td>一行一个日期的产品指标</td><td><code>analytics_productmetricsdaily</code></td><td>快速服务固定看板</td></tr>
+        <tr><td>维度层</td><td>一行一个用户、板块或帖子属性实体</td><td>用户、板块、帖子维度</td><td>给事实表提供分析属性</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warning">
+      “原始表之后一定要建立一张汇总表”并不是固定规则。正确的顺序是：先确定事实粒度，
+      再判断是否需要清洗层、中间层、维度层或汇总层。
+    </div>
+  </section>
+
+  <section>
+    <h2>二、判断是否建立数仓表的核心问题</h2>
+    <p>不要从“这张表看起来有用”开始，而要从业务问题开始：</p>
+    <table>
+      <thead><tr><th>判断问题</th><th>需要回答的内容</th><th>对建表决策的影响</th></tr></thead>
+      <tbody>
+        <tr><td>谁会使用？</td><td>看板、运营、产品、数据分析还是一次性排错？</td><td>使用者越多，越值得统一建表</td></tr>
+        <tr><td>多久使用一次？</td><td>每次请求、每天、每周还是只用一次？</td><td>频繁使用更适合预聚合</td></tr>
+        <tr><td>计算是否昂贵？</td><td>是否需要大表扫描、复杂 JOIN、去重和窗口计算？</td><td>昂贵且重复的计算适合物化</td></tr>
+        <tr><td>粒度是否稳定？</td><td>一行到底代表事件、用户日、帖子日还是板块日？</td><td>粒度不稳定时不要急着建汇总表</td></tr>
+        <tr><td>是否需要历史回溯？</td><td>原始事件能否重算？迟到数据能否修正？</td><td>需要重算就必须保留事实和血缘</td></tr>
+        <tr><td>是否有时效要求？</td><td>报表要求秒级、分钟级还是每天更新？</td><td>固定 SLA 决定预计算层级</td></tr>
+        <tr><td>存储和维护成本是否合理？</td><td>是否会复制大量数据、增加同步任务和口径维护？</td><td>收益小于维护成本时不要建</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      一个实用的经验判断是：如果一项计算同时具备“反复使用、计算昂贵、粒度稳定、需要固定时效”中的至少两到三项，
+      就值得认真评估是否建立数仓表；这不是硬性规则，最终还要看数据量和维护成本。
+    </div>
+  </section>
+
+  <section>
+    <h2>三、用 DAU 业务走一遍建表判断</h2>
+    <div class="pipeline" aria-label="论坛 DAU 数仓分层流程">
+      <div class="node"><strong>原始事件</strong><small>一行一个行为</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>合格事件</strong><small>过滤身份和行为</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>用户日表</strong><small>一行一个用户每天</small></div>
+      <div class="arrow">→</div>
+      <div class="node"><strong>产品日表</strong><small>一天一行指标</small></div>
+    </div>
+    <p>假设 2026-08-10 有这些原始事件：</p>
+    <table class="data-table">
+      <thead><tr><th>event_id</th><th>user_id</th><th>event_name</th><th>身份</th></tr></thead>
+      <tbody>
+        <tr><td>E1</td><td>U1</td><td>page_view</td><td>普通用户</td></tr>
+        <tr><td>E2</td><td>U1</td><td>post_view</td><td>普通用户</td></tr>
+        <tr><td>E3</td><td>U2</td><td>reply_create</td><td>普通用户</td></tr>
+        <tr><td>E4</td><td>U2</td><td>reply_create</td><td>普通用户</td></tr>
+        <tr><td>E5</td><td>U3</td><td>login</td><td>普通用户</td></tr>
+        <tr><td>E6</td><td>NULL</td><td>page_view</td><td>匿名用户</td></tr>
+        <tr><td>E7</td><td>U4</td><td>post_view</td><td>staff</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>四、阶段 0：为什么原始事实表通常值得保留</h2>
+    <p>原始事实表的粒度是“一行一个事件”，它不是为了让看板查询最快，而是为了保留事实和重算能力。</p>
+    <table>
+      <thead><tr><th>字段</th><th>业务含义</th><th>为什么保留</th></tr></thead>
+      <tbody>
+        <tr><td>event_id</td><td>事件唯一标识</td><td>去重、追查重复上报</td></tr>
+        <tr><td>occurred_at</td><td>行为发生时间</td><td>按自然日重算、处理迟到事件</td></tr>
+        <tr><td>user_id</td><td>登录用户身份</td><td>用户级去重和身份过滤</td></tr>
+        <tr><td>anonymous_id</td><td>匿名身份</td><td>登录前后身份关联</td></tr>
+        <tr><td>event_name</td><td>行为类型</td><td>改变活跃口径时可以重新计算</td></tr>
+        <tr><td>properties</td><td>事件扩展属性</td><td>支持后续维度下钻</td></tr>
+      </tbody>
+    </table>
+    <div class="callout success">
+      原始事实表通常值得保留，因为它是指标血缘的起点。即使今天只计算 DAU，未来也可能需要重新定义活跃、分析板块或回溯异常。
+    </div>
+  </section>
+
+  <section>
+    <h2>五、阶段 1：为什么建立合格事件层或清洗层</h2>
+    <p>如果每个报表都重复写管理员过滤、事件列表和时间边界，就容易产生同名不同口径。</p>
+    <table class="data-table">
+      <thead><tr><th>event_id</th><th>user_id</th><th>event_name</th><th>是否登录普通用户</th><th>是否有效事件</th><th>合格事件层结果</th></tr></thead>
+      <tbody>
+        <tr><td>E1</td><td>U1</td><td>page_view</td><td class="keep">是</td><td class="keep">是</td><td class="keep">保留</td></tr>
+        <tr><td>E2</td><td>U1</td><td>post_view</td><td class="keep">是</td><td class="keep">是</td><td class="keep">保留</td></tr>
+        <tr><td>E3</td><td>U2</td><td>reply_create</td><td class="keep">是</td><td class="keep">是</td><td class="keep">保留</td></tr>
+        <tr><td>E4</td><td>U2</td><td>reply_create</td><td class="keep">是</td><td class="keep">是</td><td class="keep">保留</td></tr>
+        <tr><td>E5</td><td>U3</td><td>login</td><td class="keep">是</td><td class="drop">否</td><td class="drop">排除</td></tr>
+        <tr><td>E6</td><td>NULL</td><td>page_view</td><td class="drop">否，匿名</td><td class="keep">是</td><td class="drop">排除</td></tr>
+        <tr><td>E7</td><td>U4</td><td>post_view</td><td class="drop">否，staff</td><td class="keep">是</td><td class="drop">排除</td></tr>
+      </tbody>
+    </table>
+    <p>是否值得把这一层物化成表，要看它是否被多个指标重复使用：</p>
+    <table>
+      <thead><tr><th>情况</th><th>建议</th></tr></thead>
+      <tbody>
+        <tr><td>只有一个 DAU 查询，数据量很小</td><td>直接 SQL 或 CTE</td></tr>
+        <tr><td>DAU、WAU、MAU、留存、用户分层都使用相同过滤</td><td>建立可复用的清洗层或统一视图</td></tr>
+        <tr><td>每天都要扫描很大的事件表</td><td>考虑物化合格事件层或按日分区</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>六、阶段 2：为什么建立用户日表</h2>
+    <p>合格事件继续按 <code>activity_date + user_id</code> 汇总，得到一行一个用户每天的行为特征。</p>
+    <table class="data-table">
+      <thead><tr><th>activity_date</th><th>user_id</th><th>event_count</th><th>page_view_count</th><th>post_view_count</th><th>reply_count</th><th>is_new_user</th></tr></thead>
+      <tbody>
+        <tr><td>2026-08-10</td><td>U1</td><td>2</td><td>1</td><td>1</td><td>0</td><td>FALSE</td></tr>
+        <tr><td>2026-08-10</td><td>U2</td><td>2</td><td>0</td><td>0</td><td>2</td><td>TRUE</td></tr>
+        <tr><td>2026-08-10</td><td>U3</td><td>0</td><td>0</td><td>0</td><td>0</td><td>TRUE</td></tr>
+      </tbody>
+    </table>
+    <p>这里发生了两个重要变化：</p>
+    <table>
+      <thead><tr><th>变化</th><th>事件层</th><th>用户日层</th><th>业务价值</th></tr></thead>
+      <tbody>
+        <tr><td>行粒度</td><td>一行一个事件</td><td>一行一个用户每天</td><td>可以做用户分层和行为画像</td></tr>
+        <tr><td>U1 的两条事件</td><td>2 行</td><td>1 行</td><td>适合计算 DAU，而不是事件量</td></tr>
+        <tr><td>U3 新注册无行为</td><td>没有有效事件</td><td>仍可保留 1 行</td><td>避免新增激活率分母丢失</td></tr>
+      </tbody>
+    </table>
+    <div class="callout success">
+      用户日表值得建立的原因是：它被 DAU、用户分层、新增激活、发帖率、回复率和留存分析反复使用，且粒度“一个用户一天一行”稳定明确。
+    </div>
+  </section>
+
+  <section>
+    <h2>七、阶段 3：为什么建立产品日表</h2>
+    <p>用户日表继续汇总到日期粒度，形成看板直接读取的一天一行结果。</p>
+    <table class="data-table">
+      <thead><tr><th>metric_date</th><th>dau</th><th>session_count</th><th>page_views</th><th>post_views</th><th>replies_created</th><th>generated_at</th></tr></thead>
+      <tbody>
+        <tr><td>2026-08-10</td><td>2</td><td>2</td><td>1</td><td>1</td><td>2</td><td>2026-08-11 00:10</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>业务需求</th><th>直接查询事件表</th><th>读取产品日表</th></tr></thead>
+      <tbody>
+        <tr><td>管理员打开 DAU 趋势图</td><td>每次扫描和去重</td><td>读取一天一行，速度稳定</td></tr>
+        <tr><td>临时改变活跃口径</td><td>灵活</td><td>不灵活，需要重新生成</td></tr>
+        <tr><td>核查某个用户为何活跃</td><td>可以回查事件</td><td>只有汇总数字，不能单独解释</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warning">
+      产品日表值得建立，是因为看板反复读取固定指标；但它不能替代原始事件表和用户日表。
+      汇总表是加速层，不是事实唯一来源。
+    </div>
+  </section>
+
+  <section>
+    <h2>八、阶段 4：事实表和维度表如何判断</h2>
+    <p>数据仓库不只有“原始表”和“汇总表”。还要判断哪些数据属于事实，哪些数据属于描述事实的维度。</p>
+    <table>
+      <thead><tr><th>表类型</th><th>一行代表什么</th><th>适合保存的内容</th><th>当前论坛示例</th></tr></thead>
+      <tbody>
+        <tr><td>事实表 Fact</td><td>一次发生的业务行为</td><td>时间、用户、对象、行为、金额或数量</td><td><code>analytics_analyticsevent</code>、帖子、回复</td></tr>
+        <tr><td>维度表 Dimension</td><td>一个可被分析的实体属性</td><td>用户、板块、帖子名称、分类、状态</td><td><code>auth_user</code>、<code>forum_board</code>、<code>forum_post</code></td></tr>
+        <tr><td>桥接表 Bridge</td><td>多对多关系中的一条关联</td><td>用户与帖子、用户与角色、帖子与标签</td><td>帖子点赞用户关系</td></tr>
+        <tr><td>快照表 Snapshot</td><td>某个时间点的状态</td><td>当前点赞数、用户状态、帖子状态</td><td>每日帖子状态快照</td></tr>
+      </tbody>
+    </table>
+
+    <h3>用表的变化判断是否值得建立</h3>
+    <table class="data-table">
+      <thead><tr><th>业务问题</th><th>事实记录</th><th>需要的维度</th><th>是否需要新表</th><th>判断理由</th></tr></thead>
+      <tbody>
+        <tr><td>今天有多少普通用户活跃？</td><td>AnalyticsEvent</td><td>用户身份属性</td><td class="keep">建立用户日表</td><td>每天重复计算，且多个指标复用</td></tr>
+        <tr><td>哪个板块 DAU 下降？</td><td>AnalyticsEvent.board_id</td><td>Board 名称和分类</td><td class="keep">建立板块日汇总</td><td>固定看板需要快速读取</td></tr>
+        <tr><td>某个用户为什么被计入 DAU？</td><td>AnalyticsEvent 明细</td><td>auth_user</td><td class="drop">不建新表</td><td>一次性回查，原始表足够</td></tr>
+        <tr><td>帖子获得回复的速度如何？</td><td>Post、Reply</td><td>作者和板块</td><td class="keep">建立帖子回应中间表</td><td>需要按帖计算首次回复时间</td></tr>
+        <tr><td>临时验证一个新事件口径</td><td>AnalyticsEvent</td><td>不需要</td><td class="drop">使用 CTE</td><td>需求尚未稳定，不应提前物化</td></tr>
+      </tbody>
+    </table>
+    <div class="callout success">
+      建表的依据不是“原始数据已经有了”，而是“这个业务转换是否稳定、重复、昂贵、需要被多个使用者共享”。
+    </div>
+  </section>
+
+  <section>
+    <h2>九、表类型选择：CTE、视图、中间表还是汇总表</h2>
+    <table>
+      <thead><tr><th>对象</th><th>何时使用</th><th>保存时间</th><th>当前论坛案例</th></tr></thead>
+      <tbody>
+        <tr><td>直接 SQL</td><td>一次性、简单查询</td><td>不保存</td><td>临时核查 DAU</td></tr>
+        <tr><td>CTE（WITH）</td><td>当前 SQL 内需要多个步骤</td><td>当前查询期间</td><td>事件过滤 → 用户去重</td></tr>
+        <tr><td>视图 View</td><td>逻辑需要复用，但实时性优先</td><td>保存定义，不保存结果</td><td>统一普通用户有效事件口径</td></tr>
+        <tr><td>中间表</td><td>重复计算昂贵且粒度稳定</td><td>长期保存</td><td>UserActivityDaily</td></tr>
+        <tr><td>汇总表 Mart</td><td>固定报表和看板反复读取</td><td>长期保存</td><td>ProductMetricsDaily</td></tr>
+        <tr><td>事实表</td><td>保存不可丢失的业务行为</td><td>长期保存</td><td>AnalyticsEvent、forum_post、forum_reply</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>十、建立一张表前必须写出的表合同</h2>
+    <table>
+      <thead><tr><th>合同字段</th><th>以 UserActivityDaily 为例</th></tr></thead>
+      <tbody>
+        <tr><td>表名</td><td>analytics_useractivitydaily</td></tr>
+        <tr><td>一行代表什么</td><td>一个普通用户在一个自然日的行为汇总</td></tr>
+        <tr><td>唯一键</td><td>activity_date + user_id</td></tr>
+        <tr><td>来源表</td><td>analytics_analyticsevent + auth_user</td></tr>
+        <tr><td>时间口径</td><td>Asia/Shanghai 自然日</td></tr>
+        <tr><td>过滤规则</td><td>排除匿名、staff、superuser；保留有效行为</td></tr>
+        <tr><td>刷新方式</td><td>按日生成，可重跑指定日期</td></tr>
+        <tr><td>下游使用者</td><td>DAU、用户分层、新增激活、留存分析</td></tr>
+        <tr><td>质量检查</td><td>唯一键不重复、计数不为负、与事件层 DAU 对账</td></tr>
+      </tbody>
+    </table>
+    <div class="callout success">
+      如果一张候选表无法写清楚“一行代表什么、从哪里来、多久刷新、谁使用、如何核验”，就说明它还没有达到建表条件。
+    </div>
+  </section>
+
+  <section>
+    <h2>十一、最终判断流程</h2>
+    <div class="decision-grid">
+      <div class="decision-card"><h3>问题 1：是否保留事实？</h3><p>如果数据代表真实业务行为，未来可能重算或追溯，建立事实表。</p></div>
+      <div class="decision-card"><h3>问题 2：是否重复使用？</h3><p>如果多个指标都重复同一过滤和连接，建立视图或清洗层。</p></div>
+      <div class="decision-card"><h3>问题 3：是否计算昂贵？</h3><p>如果每天反复扫描大表、去重和聚合，建立中间表或汇总表。</p></div>
+      <div class="decision-card"><h3>问题 4：粒度是否稳定？</h3><p>如果不能明确一行代表什么，先不要建表，先完善指标合同。</p></div>
+    </div>
+    <ul class="checklist">
+      <li>原始事实表解决“事实能否追溯和重算”。</li>
+      <li>清洗或中间表解决“同一业务规则是否重复实现”。</li>
+      <li>用户日表解决“用户级行为是否需要反复分析”。</li>
+      <li>产品日表解决“固定看板是否需要快速读取”。</li>
+      <li>事实表解决“业务行为过程是否需要保留”。</li>
+      <li>维度表解决“事实发生在什么用户、板块或帖子上”。</li>
+      <li>汇总表只在具体分析问题稳定且重复出现时建立。</li>
+    </ul>
+    <div class="callout success">
+      建表不是“数据越多越好”，而是把稳定、重复、昂贵、需要追溯的业务计算沉淀下来。
+      最好的顺序是：先定义业务问题，再确定粒度，最后决定是否物化成表。
+    </div>
+  </section>
+</main>
+</body>
+</html>

@@ -17,6 +17,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': { target: 'http://127.0.0.1:8000', changeOrigin: true, headers: { origin: 'http://127.0.0.1:8000' } },
+      '/analytics': { target: 'http://127.0.0.1:8000', changeOrigin: true, headers: { origin: 'http://127.0.0.1:8000' } },
     },
   },
 })
